@@ -1,21 +1,41 @@
 import cv2
 import mediapipe as mp
+import numpy as np
 
 def Hand_Open(hand_landmarks):
-    fingertip_id = [4,8,12,16,20]
-    palm_base_id = 0
-    palm_base = hand_landmarks.landmark[palm_base_id]
-    distances = []
+    fingertip_ids = [4,8,12,16,20]
+    wrist_id = 0
+    palm_base_id = 9
     
+    wrist = np.array([hand_landmarks.landmark[wrist_id].x, hand_landmarks.landmark[wrist_id].y])
+    palm_base = np.array([hand_landmarks.landmark[palm_base_id].x, hand_landmarks.landmark[palm_base_id].y])
+    
+    wrist_to_palm_base = np.linalg.norm(wrist - palm_base)
+    
+    open_hand_signals = 0
+    
+    for fingertip_id in fingertip_ids:
+        fingertip = np.array([hand_landmarks.landmark[fingertip_id].x, hand_landmarks.landmark[fingertip_id].y])
+        wrist_to_fingertip = np.linalg.norm(wrist - fingertip)
+        ratio = wrist_to_fingertip / wrist_to_palm_base
+        
+        if ratio > 1:
+            open_hand_signals += 1
+            
+    return open_hand_signals == 5
+        
 
+  
 def Capture_Video(): 
     mp_hands = mp.solutions.hands
-    hands = mp_hands.Hands(static_image_mode = False, max_num_hands = 4,
+    hands = mp_hands.Hands(static_image_mode = False, max_num_hands = 1,
                            min_detection_confidence = 0.5, 
                            min_tracking_confidence = 0.5)
     cam = cv2.VideoCapture(0)
     if not cam.isOpened():
         raise IOError ("webcam not openable") #error jesli kamera sie nie otworzy, od razu break programu
+    
+    open_hand_count = 0
     
     while True:
         ret, frame = cam.read()
@@ -27,13 +47,16 @@ def Capture_Video():
         
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
-               x_min = min([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
-               x_max = max([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
-               y_min = min([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
-               y_max = max([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
+                if Hand_Open(hand_landmarks):
+                    open_hand_count += 1
+                    print(f"open hand {open_hand_count}")
+                x_min = min([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
+                x_max = max([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
+                y_min = min([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
+                y_max = max([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
                
-               x_min, x_max, y_min, y_max = int(x_min),int(x_max),int(y_min),int(y_max)
-               cv2.rectangle(frame, (x_min,y_min),(x_max,y_max),(0,255,0),2)
+                x_min, x_max, y_min, y_max = int(x_min),int(x_max),int(y_min),int(y_max)
+                cv2.rectangle(frame, (x_min,y_min),(x_max,y_max),(0,255,0),2)
         cv2.imshow('webcam', frame)
         
         if cv2.waitKey (1) & 0xFF == ord('q'):
