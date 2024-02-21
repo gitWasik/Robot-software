@@ -24,8 +24,19 @@ def Hand_Open(hand_landmarks):
             
     return open_hand_signals == 5
         
-
-  
+def Hand_Orientation(hand_landmarks):
+    thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
+    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
+    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y, hand_landmarks.landmark[20].z])
+    
+    thumb_to_index = index_tip - thumb_tip
+    thumb_to_pinky = pinky_tip - thumb_tip
+    cross = np.cross(thumb_to_index, thumb_to_pinky)
+    
+    if cross[2] > 0:
+        return "palm"
+    else:
+        return "wrong"
 def Capture_Video(): 
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(static_image_mode = False, max_num_hands = 1,
@@ -50,6 +61,8 @@ def Capture_Video():
                 if Hand_Open(hand_landmarks):
                     open_hand_count += 1
                     print(f"open hand {open_hand_count}")
+                
+                orientation = Hand_Orientation(hand_landmarks)
                 x_min = min([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
                 x_max = max([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
                 y_min = min([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
@@ -57,7 +70,8 @@ def Capture_Video():
                
                 x_min, x_max, y_min, y_max = int(x_min),int(x_max),int(y_min),int(y_max)
                 cv2.rectangle(frame, (x_min,y_min),(x_max,y_max),(0,255,0),2)
-        cv2.imshow('webcam', frame)
+                cv2.putText(frame, orientation, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
+        cv2.imshow('Kamera', frame)
         
         if cv2.waitKey (1) & 0xFF == ord('q'):
             break
