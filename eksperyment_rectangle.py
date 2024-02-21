@@ -24,7 +24,7 @@ def Hand_Open(hand_landmarks):
             
     return open_hand_signals == 5
         
-def Hand_Orientation(hand_landmarks):
+def Hand_Orientation(hand_landmarks, hand_label):
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
     pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y, hand_landmarks.landmark[20].z])
@@ -33,10 +33,16 @@ def Hand_Orientation(hand_landmarks):
     thumb_to_pinky = pinky_tip - thumb_tip
     cross = np.cross(thumb_to_index, thumb_to_pinky)
     
-    if cross[2] > 0:
-        return "palm"
+    if hand_label == "Left":
+        if cross[2] < 0:
+            return "Inside"
+        else:
+            return "Outside"
     else:
-        return "wrong"
+        if cross[2] > 0:
+            return "Inside"
+        else:
+            return "Outside"
 def Capture_Video(): 
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(static_image_mode = False, max_num_hands = 1,
@@ -57,12 +63,10 @@ def Capture_Video():
         results = hands.process(frame_rgb)
         
         if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                if Hand_Open(hand_landmarks):
-                    open_hand_count += 1
-                    print(f"open hand {open_hand_count}")
+            for hand_landmarks,handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
+                hand_label = handedness.classification[0].label
                 
-                orientation = Hand_Orientation(hand_landmarks)
+                orientation = Hand_Orientation(hand_landmarks, hand_label)
                 x_min = min([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
                 x_max = max([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
                 y_min = min([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
@@ -70,7 +74,15 @@ def Capture_Video():
                
                 x_min, x_max, y_min, y_max = int(x_min),int(x_max),int(y_min),int(y_max)
                 cv2.rectangle(frame, (x_min,y_min),(x_max,y_max),(0,255,0),2)
-                cv2.putText(frame, orientation, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
+                orientation = Hand_Orientation(hand_landmarks, hand_label)
+                if Hand_Open(hand_landmarks) and orientation == "Inside":
+                    open_hand_count += 1
+                    print(f"open hand {open_hand_count}")
+                    cv2.putText(frame, "Hand open", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
+                elif not Hand_Open(hand_landmarks):
+                    cv2.putText(frame, "Hand closed", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+                else:
+                    cv2.putText(frame, "Outside",(x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
         cv2.imshow('Kamera', frame)
         
         if cv2.waitKey (1) & 0xFF == ord('q'):
