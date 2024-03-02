@@ -9,7 +9,7 @@ from PIL import Image, ImageTk
 webcam_thread = None
 webcam_running = False
 frame_label = None
-
+hand_area_label = None
 def Hand_Open(hand_landmarks):
     fingertip_ids = [4,   8,   12,   16,   20]
     wrist_id =   0
@@ -54,46 +54,59 @@ def Capture_Video():
     hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.5)
     cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)  
     cam.set(cv2.CAP_PROP_FPS,  30)  
+    frame_counter = 0
+    pixel_size = 0.03
+    scaling = pixel_size ** 2
     if not cam.isOpened():
         raise IOError("webcam not openable")
     open_hand_count = 0
-    while webcam_running:
-        ret, frame = cam.read()
-        if not ret:
-            print("no stream")
-            break
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = hands.process(frame_rgb)
-        if results.multi_hand_landmarks:
-            for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
-                hand_label = handedness.classification[0].label
-                orientation = Hand_Orientation(hand_landmarks, hand_label)
-                x_min = min([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
-                x_max = max([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
-                y_min = min([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
-                y_max = max([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
-                x_min, x_max, y_min, y_max = int(x_min), int(x_max), int(y_min), int(y_max)
-                cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0,   255,   0),   2)
-                orientation = Hand_Orientation(hand_landmarks, hand_label)
-                if Hand_Open(hand_landmarks) and orientation == "Inside":
-                    open_hand_count +=   1
-                    print(f"open hand {open_hand_count}")
-                    cv2.putText(frame, "Hand open", (x_min, y_min -   10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-                elif not Hand_Open(hand_landmarks):
-                    cv2.putText(frame, "Hand closed", (x_min, y_min -   10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,   0,   255),   2)
-                else:
-                    cv2.putText(frame, "Outside", (x_min, y_min -   10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255,   0,   0),   2)
-        cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-        img = Image.fromarray(cv2image)
-        imgtk = ImageTk.PhotoImage(image=img)
-        frame_label.imgtk = imgtk
-        frame_label.configure(image=imgtk)
-        frame_label.image = imgtk
-        if cv2.waitKey(1) &   0xFF == ord('q'):
-            webcam_running = False
-            break
-    cam.release()
-    cv2.destroyAllWindows()
+    try:
+        while webcam_running:
+            ret, frame = cam.read()
+            if not ret:
+                print("no stream")
+                break
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = hands.process(frame_rgb)
+            if results.multi_hand_landmarks:
+                for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
+                    hand_label = handedness.classification[0].label
+                    orientation = Hand_Orientation(hand_landmarks, hand_label)
+                    x_min = min([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
+                    x_max = max([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
+                    y_min = min([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
+                    y_max = max([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
+                    x_min, x_max, y_min, y_max = int(x_min), int(x_max), int(y_min), int(y_max)
+                    cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0,   255,   0),   2)
+                    orientation = Hand_Orientation(hand_landmarks, hand_label)
+                                    
+                    if Hand_Open(hand_landmarks) and orientation == "Inside":
+                        open_hand_count +=   1
+                        print(f"open hand {open_hand_count}")
+                        cv2.putText(frame, "Hand open", (x_min, y_min -   10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                        frame_counter +=1
+                        if frame_counter == 15:
+                            hand_area_pixels = (x_max - x_min) * (y_max - y_min)
+                            hand_area = int(hand_area_pixels * scaling)
+                            hand_area_label.config(text=f"Hand area: {hand_area} UNITS")
+                            frame_counter = 0
+                            hand_area = 0
+                    elif not Hand_Open(hand_landmarks):
+                        cv2.putText(frame, "Hand closed", (x_min, y_min -   10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,   0,   255),   2)
+                    else:
+                        cv2.putText(frame, "Outside", (x_min, y_min -   10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255,   0,   0),   2)
+            cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+            img = Image.fromarray(cv2image)
+            imgtk = ImageTk.PhotoImage(image=img)
+            frame_label.imgtk = imgtk
+            frame_label.configure(image=imgtk)
+            frame_label.image = imgtk
+            if cv2.waitKey(1) &   0xFF == ord('q'):
+                webcam_running = False
+                break
+    finally:
+        cam.release()
+        cv2.destroyAllWindows()
 
 def start_webcam():
     global webcam_thread, webcam_running
@@ -119,6 +132,9 @@ def quit_app():
 root = tk.Tk()
 root.title("Raspberry Pi Robot")
 
+hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
+hand_area_label.pack(side=tk.BOTTOM)
+
 start_button = ttk.Button(root, text="START WEBCAM", command=start_webcam)
 start_button.pack(side=tk.LEFT, padx=10, pady=10)
 
@@ -130,5 +146,6 @@ quit_button.pack(side=tk.LEFT, padx=10, pady=10)
 
 frame_label = tk.Label(root)
 frame_label.pack(side=tk.LEFT)
+
 
 root.mainloop()
