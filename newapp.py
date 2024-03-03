@@ -10,48 +10,94 @@ webcam_thread = None
 webcam_running = False
 frame_label = None
 hand_area_label = None
+
 def Hand_Open(hand_landmarks):
-    fingertip_ids = [4,   8,   12,   16,   20]
-    wrist_id =   0
-    palm_base_id =   9
+    fingertip_ids = [4, 8, 12, 16, 20]
+    wrist_id = 0
+    palm_base_id = 9
     wrist = np.array([hand_landmarks.landmark[wrist_id].x, hand_landmarks.landmark[wrist_id].y])
     palm_base = np.array([hand_landmarks.landmark[palm_base_id].x, hand_landmarks.landmark[palm_base_id].y])
     wrist_to_palm_base = np.linalg.norm(wrist - palm_base)
-    open_hand_signals =   0
+    open_hand_signals = 0
     for fingertip_id in fingertip_ids:
         fingertip = np.array([hand_landmarks.landmark[fingertip_id].x, hand_landmarks.landmark[fingertip_id].y])
         wrist_to_fingertip = np.linalg.norm(wrist - fingertip)
         ratio = wrist_to_fingertip / wrist_to_palm_base
-        if ratio >   1:
-            open_hand_signals +=   1
-    return open_hand_signals ==   5
+        if ratio > 1:
+            open_hand_signals += 1
+    return open_hand_signals == 5
 
 def Hand_Orientation(hand_landmarks, hand_label):
+    ###TIPS
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y, hand_landmarks.landmark[12].z])
     pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y, hand_landmarks.landmark[20].z])
-    thumb_to_index = index_tip - thumb_tip
-    thumb_to_middle = middle_tip - thumb_tip
-    thumb_to_pinky = pinky_tip - thumb_tip
-    cross_index = np.cross(thumb_to_index, thumb_to_pinky)
-    cross_middle = np.cross(thumb_to_middle, thumb_to_pinky)
-    avg_z = (cross_index[2] + cross_middle[2]) /   2
+    ###KNUCKLES AND FINGER BASES
+    index_base = np.array([hand_landmarks.landmark[5].x, hand_landmarks.landmark[5].y, hand_landmarks.landmark[5].z])
+    middle_base = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y, hand_landmarks.landmark[9].z])
+    pinky_base = np.array([hand_landmarks.landmark[17].x, hand_landmarks.landmark[17].y, hand_landmarks.landmark[17].z])
+    index_knuckle = np.array([hand_landmarks.landmark[6].x, hand_landmarks.landmark[6].y, hand_landmarks.landmark[6].z])
+    middle_knuckle = np.array([hand_landmarks.landmark[10].x, hand_landmarks.landmark[10].y, hand_landmarks.landmark[10].z])
+    pinky_knuckle = np.array([hand_landmarks.landmark[14].x, hand_landmarks.landmark[14].y, hand_landmarks.landmark[14].z])
+    
+    thumb_to_index_base = index_base - thumb_tip
+    thumb_to_middle_base = middle_base - thumb_tip
+    thumb_to_pinky_base = pinky_base - thumb_tip
+    thumb_to_index_knuckle = index_knuckle - thumb_tip
+    thumb_to_middle_knuckle = middle_knuckle - thumb_tip
+    thumb_to_pinky_knuckle = pinky_knuckle - thumb_tip
+    
+    #thumb_to_index = index_tip - thumb_tip
+    #thumb_to_middle = middle_tip - thumb_tip
+    #thumb_to_pinky = pinky_tip - thumb_tip
+    
+    cross_index_base = np.cross(thumb_to_index_base, thumb_to_pinky_base)
+    cross_middle_base = np.cross(thumb_to_middle_base, thumb_to_pinky_base)
+    cross_index_knuckle = np.cross(thumb_to_index_knuckle, thumb_to_pinky_knuckle)
+    cross_middle_knuckle = np.cross(thumb_to_middle_knuckle, thumb_to_pinky_knuckle)
+    
+    avg_z_base = (cross_index_base[2] + cross_middle_base[2]) / 2
+    avg_z_knuckle = (cross_index_knuckle[2] + cross_middle_knuckle[2]) / 2
     if hand_label == "Right":
-        if avg_z >   0:
+        if avg_z_base and avg_z_knuckle > 0:
             return "Inside"
         else:
             return "Outside"
     else:
-        if avg_z <   0:
+        if avg_z_base and avg_z_knuckle < 0:
             return "Inside"
         else:
             return "Outside"
+        
+def Victory_Sign(hand_landmarks):
+    thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
+    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
+    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y, hand_landmarks.landmark[12].z])
+    palm_base = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y, hand_landmarks.landmark[9].z])
 
+    thumb_to_palm = np.linalg.norm(thumb_tip - palm_base)
+    index_to_palm = np.linalg.norm(index_tip - palm_base)
+    middle_to_palm = np.linalg.norm(middle_tip - palm_base)
+    thumb_to_index = np.linalg.norm(thumb_tip - index_tip)
+    
+    thumb_to_index_ratio = thumb_to_index / thumb_to_palm
+    index_to_palm_ratio = index_to_palm / thumb_to_palm
+    middle_to_palm_ratio = middle_to_palm / thumb_to_palm
+    
+    thumb_to_index_threshold = 1.5
+    index_to_palm_threshold = 1.5
+    middle_to_palm_threshold = 1.5
+    
+    thumb_extended = thumb_to_index_ratio > thumb_to_index_threshold
+    index_extended = index_to_palm_ratio > index_to_palm_threshold
+    middle_extended = middle_to_palm_ratio > middle_to_palm_threshold
+    
+    return thumb_extended and index_extended and middle_extended
 def Capture_Video():
     global webcam_running, frame_label
     mp_hands = mp.solutions.hands
-    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.6, min_tracking_confidence=0.5)
     cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)  
     cam.set(cv2.CAP_PROP_FPS,  30)  
     frame_counter = 0
@@ -83,8 +129,10 @@ def Capture_Video():
                     if Hand_Open(hand_landmarks) and orientation == "Inside":
                         open_hand_count +=   1
                         print(f"open hand {open_hand_count}")
-                        cv2.putText(frame, "Hand open", (x_min, y_min -   10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                        cv2.putText(frame, "Hand open", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
                         frame_counter +=1
+                        if Victory_Sign(hand_landmarks):
+                            cv2.putText(frame, "Victory sign",(x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2)
                         if frame_counter == 15:
                             hand_area_pixels = (x_max - x_min) * (y_max - y_min)
                             hand_area = int(hand_area_pixels * scaling)
@@ -92,16 +140,16 @@ def Capture_Video():
                             frame_counter = 0
                             hand_area = 0
                     elif not Hand_Open(hand_landmarks):
-                        cv2.putText(frame, "Hand closed", (x_min, y_min -   10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,   0,   255),   2)
+                        cv2.putText(frame, "Hand closed", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
                     else:
-                        cv2.putText(frame, "Outside", (x_min, y_min -   10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255,   0,   0),   2)
+                        cv2.putText(frame, "Outside", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
             cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
             frame_label.imgtk = imgtk
             frame_label.configure(image=imgtk)
             frame_label.image = imgtk
-            if cv2.waitKey(1) &   0xFF == ord('q'):
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 webcam_running = False
                 break
     finally:
