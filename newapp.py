@@ -5,11 +5,109 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from PIL import Image, ImageTk
+import time
+#import RPi.GPIO as GPIO
+
 
 webcam_thread = None
 webcam_running = False
 frame_label = None
 hand_area_label = None
+
+#IN1 = 13
+#IN2 = 12
+#ENA = 6
+#IN3 = 21
+#IN4 = 20
+#ENB = 26
+#PA = 50
+#PB = 50
+
+
+#GPIO.setmode(GPIO.BCM)
+#GPIO.setwarnings(False)
+#GPIO.setup(IN1, GPIO.OUT)
+#GPIO.setup(IN2, GPIO.OUT)
+#GPIO.setup(IN3, GPIO.OUT)
+#GPIO.setup(IN4, GPIO.OUT)
+#GPIO.setup(ENA, GPIO.OUT)
+#GPIO.setup(ENB, GPIO.OUT)
+#PWMA = GPIO.PWM(ENA, 500)
+#PWMB = GPIO.PWM(ENB, 500)
+#PWMA.start(PA)
+#PWMB.start(PB)
+
+#def stop():
+#    PWMA.ChangeDutyCycle(0)
+#    PWMB.ChangeDutyCycle(0)
+#    GPIO.output(IN1, GPIO.LOW)
+#    GPIO.output(IN2, GPIO.LOW)
+#    GPIO.output(IN3, GPIO.LOW)
+#    GPIO.output(IN4, GPIO.LOW)
+
+
+#stop()
+
+#def forward():
+ #   PWMA.ChangeDutyCycle(PA)
+ #   PWMB.ChangeDutyCycle(PB)
+ #   GPIO.output(IN1, GPIO.HIGH)
+ #   GPIO.output(IN2, GPIO.LOW)
+ #   GPIO.output(IN3, GPIO.HIGH)
+ #   GPIO.output(IN4, GPIO.LOW)
+
+#def backward():
+#    PWMA.ChangeDutyCycle(PA)
+#    PWMB.ChangeDutyCycle(PB)
+#    GPIO.output(IN1, GPIO.LOW)
+#    GPIO.output(IN2, GPIO.HIGH)
+#    GPIO.output(IN3, GPIO.LOW)
+#    GPIO.output(IN4, GPIO.HIGH)
+
+#def left():
+#    PWMA.ChangeDutyCycle(30)
+#    PWMB.ChangeDutyCycle(30)
+#    GPIO.output(IN1, GPIO.LOW)
+#    GPIO.output(IN2, GPIO.HIGH)
+#    GPIO.output(IN3, GPIO.HIGH)
+#    GPIO.output(IN4, GPIO.LOW)
+
+#def right():
+#    PWMA.ChangeDutyCycle(30)
+#    PWMB.ChangeDutyCycle(30)
+#    GPIO.output(IN1, GPIO.HIGH)
+#    GPIO.output(IN2, GPIO.LOW)
+#    GPIO.output(IN3, GPIO.LOW)
+#    GPIO.output(IN4, GPIO.HIGH)
+
+#def setPWMA(value):
+#    global PA
+#    PA = value
+#    PWMA.ChangeDutyCycle(PA)
+
+#def setPWMB(value):
+#    global PB
+#    PB = value
+#    PWMB.ChangeDutyCycle(PB)
+
+#def setMotor(left, right):
+#    if 0 <= right <= 100:
+#        GPIO.output(IN1, GPIO.HIGH)
+#        GPIO.output(IN2, GPIO.LOW)
+#        PWMA.ChangeDutyCycle(right)
+#    elif -100 <= right < 0:
+#        GPIO.output(IN1, GPIO.LOW)
+#        GPIO.output(IN2, GPIO.HIGH)
+#        PWMA.ChangeDutyCycle(0 - right)
+#    if 0 <= left <= 100:
+#        GPIO.output(IN3, GPIO.HIGH)
+#        GPIO.output(IN4, GPIO.LOW)
+#        PWMB.ChangeDutyCycle(left)
+#    elif -100 <= left < 0:
+#        GPIO.output(IN3, GPIO.LOW)
+#        GPIO.output(IN4, GPIO.HIGH)
+#        PWMB.ChangeDutyCycle(0 - left)
+        
 
 def Hand_Open(hand_landmarks,hand_label):
     if Victory_Sign(hand_landmarks,hand_label):
@@ -165,9 +263,9 @@ def Capture_Video():
             frame_label.imgtk = imgtk
             frame_label.configure(image=imgtk)
             frame_label.image = imgtk
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                webcam_running = False
-                break
+            #if cv2.waitKey(1) & 0xFF == ord('q'):
+            #    webcam_running = False
+            #    break
     finally:
         cam.release()
         cv2.destroyAllWindows()
@@ -194,11 +292,40 @@ def quit_app():
     webcam_running = False
     root.destroy()
 
+def forward_button_command():
+    #forward()
+    print("Forward button pressed")
+    
+def backward_button_command():
+    #backward()
+    print("Backward button pressed")
+    
+def left_button_command():
+    #left()
+    print("Left button pressed")
+    
+def right_button_command():
+    #right()
+    print("Right button pressed")
+    
+
 root = tk.Tk()
 root.title("Raspberry Pi Robot")
 
 hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
 hand_area_label.pack(side=tk.BOTTOM)
+
+forward_button = ttk.Button(root, text="FORWARD", command=forward_button_command)
+forward_button.pack(side=tk.TOP, padx=10, pady=10)
+
+backward_button = ttk.Button(root, text="BACKWARD", command=backward_button_command)
+backward_button.pack(side=tk.TOP, padx=10, pady=10)
+
+left_button = ttk.Button(root, text="LEFT", command=left_button_command)
+left_button.pack(side=tk.TOP, padx=10, pady=10)
+
+right_button = ttk.Button(root, text="RIGHT", command=right_button_command)
+right_button.pack(side=tk.TOP, padx=10, pady=10)
 
 start_button = ttk.Button(root, text="START WEBCAM", command=start_webcam)
 start_button.pack(side=tk.LEFT, padx=10, pady=10)
