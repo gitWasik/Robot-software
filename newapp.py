@@ -170,6 +170,39 @@ def Hand_Orientation(hand_landmarks, hand_label):
         else:
             return "Outside"
         
+
+def Like(hand_landmarks,hand_label):
+    
+    thumb_tip_id = 4
+    other_fingers = [8, 12, 16, 20]
+    wrist_id = 0
+    
+    wrist = np.array([hand_landmarks.landmark[wrist_id].x,
+                      hand_landmarks.landmark[wrist_id].y,
+                      hand_landmarks.landmark[wrist_id].z])
+    
+    thumb_tip = np.array([hand_landmarks.landmark[thumb_tip_id].x,
+                          hand_landmarks.landmark[thumb_tip_id].y,
+                          hand_landmarks.landmark[thumb_tip_id].z])
+    
+    wrist_to_thumb = np.linalg.norm(wrist - thumb_tip)
+    
+    other_fingers_ratios = []
+    
+    for fingertip_id in other_fingers:
+        fingertip = np.array([hand_landmarks.landmark[fingertip_id].x,
+                              hand_landmarks.landmark[fingertip_id].y,
+                              hand_landmarks.landmark[fingertip_id].z])
+        wrist_to_fingertip = np.linalg.norm(wrist - fingertip)
+        ratio = wrist_to_fingertip / wrist_to_thumb
+        other_fingers_ratios.append(ratio)
+        
+    thumb_extended = all(ratio < 1 for ratio in other_fingers_ratios)
+    
+    return thumb_extended
+    
+    
+        
 def Victory_Sign(hand_landmarks, hand_label):
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
@@ -198,13 +231,21 @@ def Victory_Sign(hand_landmarks, hand_label):
     index_extended = index_to_palm > index_base_to_palm
     middle_extended = middle_to_palm > middle_base_to_palm
     
-    #thumb_curled = thumb_to_palm < thumb_base_to_palm
     ring_curled = ring_to_palm < ring_base_to_palm
     pinky_curled = pinky_to_palm < pinky_base_to_palm
     
+    thumb_tip_x = hand_landmarks.landmark[4].x
+    thumb_mcp_x = hand_landmarks.landmark[1].x
+    
+    if hand_label == "Right":
+        thumb_not_extended = thumb_tip_x > thumb_mcp_x
+    else:
+        thumb_not_extended = thumb_tip_x < thumb_mcp_x
+        
+        
     orientation = Hand_Orientation(hand_landmarks, hand_label)
     
-    return index_extended and middle_extended and ring_curled and pinky_curled and orientation == "Inside"
+    return index_extended and middle_extended and ring_curled and pinky_curled  and thumb_not_extended and orientation == "Inside"
     
 def Capture_Video():
     global webcam_running, frame_label
@@ -237,6 +278,10 @@ def Capture_Video():
                     x_min, x_max, y_min, y_max = int(x_min), int(x_max), int(y_min), int(y_max)
                     cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0,   255,   0),   2)
                     orientation = Hand_Orientation(hand_landmarks, hand_label)
+                    
+                    if Like(hand_landmarks, hand_label):
+                        cv2.putText(frame, "Like",(x_min, y_min - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 0), 2)
+                        continue
                                     
                     if Victory_Sign(hand_landmarks, hand_label):
                         cv2.putText(frame, "Victory sign",(x_min, y_min - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2)
