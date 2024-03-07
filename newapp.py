@@ -13,6 +13,7 @@ webcam_thread = None
 webcam_running = False
 frame_label = None
 hand_area_label = None
+black_image_tk = None
 
 #IN1 = 13
 #IN2 = 12
@@ -307,7 +308,7 @@ def Capture_Video():
             imgtk = ImageTk.PhotoImage(image=img)
             frame_label.imgtk = imgtk
             frame_label.configure(image=imgtk)
-            frame_label.image = imgtk
+            #frame_label.image = imgtk
             #if cv2.waitKey(1) & 0xFF == ord('q'):
             #    webcam_running = False
             #    break
@@ -325,12 +326,23 @@ def start_webcam():
         start_button.config(state=tk.DISABLED)
         stop_button.config(state=tk.NORMAL)
 
+def black_image():
+    global frame_label
+    width, height = 640, 480
+    black_image = np.zeros((height, width, 3),dtype=np.uint8)
+    black_image_pil = Image.fromarray(black_image)
+    black_image_tk = ImageTk.PhotoImage(image=black_image_pil)
+    frame_label.imgtk = black_image_tk
+    frame_label.configure(image=black_image_tk)
+    frame_label.image = black_image_tk
+
 def stop_webcam():
     global webcam_running
     if webcam_running:
         webcam_running = False
         start_button.config(state=tk.NORMAL)
         stop_button.config(state=tk.DISABLED)
+       
 
 def quit_app():
     global webcam_running
@@ -357,6 +369,10 @@ def right_button_command():
 root = tk.Tk()
 root.title("Raspberry Pi Robot")
 
+frame_label = tk.Label(root)
+frame_label.pack(side=tk.RIGHT)
+black_image()
+
 hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
 hand_area_label.pack(side=tk.BOTTOM)
 
@@ -381,8 +397,7 @@ stop_button.pack(side=tk.LEFT, padx=10, pady=10)
 quit_button = ttk.Button(root, text="QUIT", command=quit_app)
 quit_button.pack(side=tk.LEFT, padx=10, pady=10)
 
-frame_label = tk.Label(root)
-frame_label.pack(side=tk.LEFT)
+
 
 
 root.mainloop()
