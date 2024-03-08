@@ -113,6 +113,8 @@ black_image_tk = None
 def Hand_Open(hand_landmarks,hand_label):
     if Victory_Sign(hand_landmarks,hand_label):
         return False
+    if Like(hand_landmarks, hand_label):
+        return False
     fingertip_ids = [4, 8, 12, 16, 20]
     wrist_id = 0
     palm_base_id = 9
@@ -173,36 +175,45 @@ def Hand_Orientation(hand_landmarks, hand_label):
         
 
 def Like(hand_landmarks,hand_label):
+  
+    thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
+    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
+    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y, hand_landmarks.landmark[12].z])
+    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y, hand_landmarks.landmark[16].z])
+    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y, hand_landmarks.landmark[20].z])
+    palm_base = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
     
-    thumb_tip_id = 4
-    other_fingers = [8, 12, 16, 20]
-    wrist_id = 0
+    thumb_distance = np.linalg.norm(thumb_tip - palm_base)
+    index_distance = np.linalg.norm(index_tip - palm_base)
+    middle_distance = np.linalg.norm(middle_tip - palm_base)
+    ring_distance = np.linalg.norm(ring_tip - palm_base)
+    pinky_distance = np.linalg.norm(pinky_tip - palm_base)
     
-    wrist = np.array([hand_landmarks.landmark[wrist_id].x,
-                      hand_landmarks.landmark[wrist_id].y,
-                      hand_landmarks.landmark[wrist_id].z])
+    # Use the z-coordinate to help distinguish between inside and outside views
+    thumb_palm_z_diff = thumb_tip[2] - palm_base[2]
     
-    thumb_tip = np.array([hand_landmarks.landmark[thumb_tip_id].x,
-                          hand_landmarks.landmark[thumb_tip_id].y,
-                          hand_landmarks.landmark[thumb_tip_id].z])
+    # Check if the thumb is extended by comparing the distance of the thumb tip to the palm base against other fingers
+    thumb_extended = thumb_distance > max(index_distance, middle_distance, ring_distance, pinky_distance)
     
-    wrist_to_thumb = np.linalg.norm(wrist - thumb_tip)
+    # Calculate the average z-coordinate difference for retracted fingers as an additional check
+    average_z_diff_retracted_fingers = np.mean([index_tip[2] - palm_base[2], middle_tip[2] - palm_base[2], ring_tip[2] - palm_base[2], pinky_tip[2] - palm_base[2]])
     
-    other_fingers_ratios = []
+    # Determine if the hand is showing the inside or outside based on the average z-difference
+    showing_outside = thumb_palm_z_diff > average_z_diff_retracted_fingers
     
-    for fingertip_id in other_fingers:
-        fingertip = np.array([hand_landmarks.landmark[fingertip_id].x,
-                              hand_landmarks.landmark[fingertip_id].y,
-                              hand_landmarks.landmark[fingertip_id].z])
-        wrist_to_fingertip = np.linalg.norm(wrist - fingertip)
-        ratio = wrist_to_fingertip / wrist_to_thumb
-        other_fingers_ratios.append(ratio)
-        
-    thumb_extended = all(ratio < 1 for ratio in other_fingers_ratios)
+    # For the "Like" gesture, the thumb should be extended more prominently in the z-direction when showing the outside
+    if showing_outside:
+        thumb_orientation_correct = thumb_palm_z_diff < 0  # Thumb tip is closer to the camera than the palm base
+    else:
+        index_mcp_x = hand_landmarks.landmark[5].x
+        if hand_label == "Right":
+            thumb_orientation_correct = thumb_tip[0] < index_mcp_x
+        else:
+            thumb_orientation_correct = thumb_tip[0] > index_mcp_x
     
-    return thumb_extended
-    
-    
+    return thumb_extended and thumb_orientation_correct
+
+
         
 def Victory_Sign(hand_landmarks, hand_label):
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
@@ -251,7 +262,7 @@ def Victory_Sign(hand_landmarks, hand_label):
 def Capture_Video():
     global webcam_running, frame_label
     mp_hands = mp.solutions.hands
-    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.6, min_tracking_confidence=0.5)
+    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.8, min_tracking_confidence=0.7)
     cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)  
     cam.set(cv2.CAP_PROP_FPS,  30)  
     frame_counter = 0
@@ -308,7 +319,7 @@ def Capture_Video():
             imgtk = ImageTk.PhotoImage(image=img)
             frame_label.imgtk = imgtk
             frame_label.configure(image=imgtk)
-            #frame_label.image = imgtk
+            frame_label.image = imgtk
             #if cv2.waitKey(1) & 0xFF == ord('q'):
             #    webcam_running = False
             #    break
