@@ -6,7 +6,7 @@ import mediapipe as mp
 import numpy as np
 from PIL import Image, ImageTk
 import time
-#import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 
 
 webcam_thread = None
@@ -15,99 +15,99 @@ frame_label = None
 hand_area_label = None
 black_image_tk = None
 
-#IN1 = 13
-#IN2 = 12
-#ENA = 6
-#IN3 = 21
-#IN4 = 20
-#ENB = 26
-#PA = 50
-#PB = 50
+IN1 = 13
+IN2 = 12
+ENA = 6
+IN3 = 21
+IN4 = 20
+ENB = 26
+PA = 20
+PB = 20
 
 
-#GPIO.setmode(GPIO.BCM)
-#GPIO.setwarnings(False)
-#GPIO.setup(IN1, GPIO.OUT)
-#GPIO.setup(IN2, GPIO.OUT)
-#GPIO.setup(IN3, GPIO.OUT)
-#GPIO.setup(IN4, GPIO.OUT)
-#GPIO.setup(ENA, GPIO.OUT)
-#GPIO.setup(ENB, GPIO.OUT)
-#PWMA = GPIO.PWM(ENA, 500)
-#PWMB = GPIO.PWM(ENB, 500)
-#PWMA.start(PA)
-#PWMB.start(PB)
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+GPIO.setup(IN1, GPIO.OUT)
+GPIO.setup(IN2, GPIO.OUT)
+GPIO.setup(IN3, GPIO.OUT)
+GPIO.setup(IN4, GPIO.OUT)
+GPIO.setup(ENA, GPIO.OUT)
+GPIO.setup(ENB, GPIO.OUT)
+PWMA = GPIO.PWM(ENA, 500)
+PWMB = GPIO.PWM(ENB, 500)
+PWMA.start(PA)
+PWMB.start(PB)
 
-#def stop():
-#    PWMA.ChangeDutyCycle(0)
-#    PWMB.ChangeDutyCycle(0)
-#    GPIO.output(IN1, GPIO.LOW)
-#    GPIO.output(IN2, GPIO.LOW)
-#    GPIO.output(IN3, GPIO.LOW)
-#    GPIO.output(IN4, GPIO.LOW)
+def stop():
+    PWMA.ChangeDutyCycle(0)
+    PWMB.ChangeDutyCycle(0)
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.LOW)
+    GPIO.output(IN3, GPIO.LOW)
+    GPIO.output(IN4, GPIO.LOW)
 
 
-#stop()
+stop()
 
-#def forward():
- #   PWMA.ChangeDutyCycle(PA)
- #   PWMB.ChangeDutyCycle(PB)
- #   GPIO.output(IN1, GPIO.HIGH)
- #   GPIO.output(IN2, GPIO.LOW)
- #   GPIO.output(IN3, GPIO.HIGH)
- #   GPIO.output(IN4, GPIO.LOW)
+def forward():
+    PWMA.ChangeDutyCycle(PA)
+    PWMB.ChangeDutyCycle(PB)
+    GPIO.output(IN1, GPIO.HIGH)
+    GPIO.output(IN2, GPIO.LOW)
+    GPIO.output(IN3, GPIO.HIGH)
+    GPIO.output(IN4, GPIO.LOW)
 
-#def backward():
-#    PWMA.ChangeDutyCycle(PA)
-#    PWMB.ChangeDutyCycle(PB)
-#    GPIO.output(IN1, GPIO.LOW)
-#    GPIO.output(IN2, GPIO.HIGH)
-#    GPIO.output(IN3, GPIO.LOW)
-#    GPIO.output(IN4, GPIO.HIGH)
+def backward():
+    PWMA.ChangeDutyCycle(PA)
+    PWMB.ChangeDutyCycle(PB)
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.HIGH)
+    GPIO.output(IN3, GPIO.LOW)
+    GPIO.output(IN4, GPIO.HIGH)
 
-#def left():
-#    PWMA.ChangeDutyCycle(30)
-#    PWMB.ChangeDutyCycle(30)
-#    GPIO.output(IN1, GPIO.LOW)
-#    GPIO.output(IN2, GPIO.HIGH)
-#    GPIO.output(IN3, GPIO.HIGH)
-#    GPIO.output(IN4, GPIO.LOW)
+def left():
+    PWMA.ChangeDutyCycle(30)
+    PWMB.ChangeDutyCycle(30)
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.HIGH)
+    GPIO.output(IN3, GPIO.HIGH)
+    GPIO.output(IN4, GPIO.LOW)
 
-#def right():
-#    PWMA.ChangeDutyCycle(30)
-#    PWMB.ChangeDutyCycle(30)
-#    GPIO.output(IN1, GPIO.HIGH)
-#    GPIO.output(IN2, GPIO.LOW)
-#    GPIO.output(IN3, GPIO.LOW)
-#    GPIO.output(IN4, GPIO.HIGH)
+def right():
+    PWMA.ChangeDutyCycle(30)
+    PWMB.ChangeDutyCycle(30)
+    GPIO.output(IN1, GPIO.HIGH)
+    GPIO.output(IN2, GPIO.LOW)
+    GPIO.output(IN3, GPIO.LOW)
+    GPIO.output(IN4, GPIO.HIGH)
 
-#def setPWMA(value):
-#    global PA
-#    PA = value
-#    PWMA.ChangeDutyCycle(PA)
+def setPWMA(value):
+    global PA
+    PA = value
+    PWMA.ChangeDutyCycle(PA)
 
-#def setPWMB(value):
-#    global PB
-#    PB = value
-#    PWMB.ChangeDutyCycle(PB)
+def setPWMB(value):
+    global PB
+    PB = value
+    PWMB.ChangeDutyCycle(PB)
 
-#def setMotor(left, right):
-#    if 0 <= right <= 100:
-#        GPIO.output(IN1, GPIO.HIGH)
-#        GPIO.output(IN2, GPIO.LOW)
-#        PWMA.ChangeDutyCycle(right)
-#    elif -100 <= right < 0:
-#        GPIO.output(IN1, GPIO.LOW)
-#        GPIO.output(IN2, GPIO.HIGH)
-#        PWMA.ChangeDutyCycle(0 - right)
-#    if 0 <= left <= 100:
-#        GPIO.output(IN3, GPIO.HIGH)
-#        GPIO.output(IN4, GPIO.LOW)
-#        PWMB.ChangeDutyCycle(left)
-#    elif -100 <= left < 0:
-#        GPIO.output(IN3, GPIO.LOW)
-#        GPIO.output(IN4, GPIO.HIGH)
-#        PWMB.ChangeDutyCycle(0 - left)
+def setMotor(left, right):
+    if 0 <= right <= 100:
+        GPIO.output(IN1, GPIO.HIGH)
+        GPIO.output(IN2, GPIO.LOW)
+        PWMA.ChangeDutyCycle(right)
+    elif -100 <= right < 0:
+        GPIO.output(IN1, GPIO.LOW)
+        GPIO.output(IN2, GPIO.HIGH)
+        PWMA.ChangeDutyCycle(0 - right)
+    if 0 <= left <= 100:
+        GPIO.output(IN3, GPIO.HIGH)
+        GPIO.output(IN4, GPIO.LOW)
+        PWMB.ChangeDutyCycle(left)
+    elif -100 <= left < 0:
+        GPIO.output(IN3, GPIO.LOW)
+        GPIO.output(IN4, GPIO.HIGH)
+        PWMB.ChangeDutyCycle(0 - left)
         
 
 def Hand_Open(hand_landmarks,hand_label):
@@ -358,22 +358,23 @@ def stop_webcam():
 def quit_app():
     global webcam_running
     webcam_running = False
+    GPIO.cleanup()
     root.destroy()
 
 def forward_button_command():
-    #forward()
+    forward()
     print("Forward button pressed")
     
 def backward_button_command():
-    #backward()
+    backward()
     print("Backward button pressed")
     
 def left_button_command():
-    #left()
+    left()
     print("Left button pressed")
     
 def right_button_command():
-    #right()
+    right()
     print("Right button pressed")
     
 
