@@ -46,15 +46,16 @@ def setup_GPIO():
 def stop():
     
     global PWMA, PWMB
-    PWMA.ChangeDutyCycle(0)
-    PWMB.ChangeDutyCycle(0)
-    GPIO.output(IN1, GPIO.LOW)
-    GPIO.output(IN2, GPIO.LOW)
-    GPIO.output(IN3, GPIO.LOW)
-    GPIO.output(IN4, GPIO.LOW)
+    if PWMA is not None and PWMB is not None:
+        PWMA.ChangeDutyCycle(0)
+        PWMB.ChangeDutyCycle(0)
+        GPIO.output(IN1, GPIO.LOW)
+        GPIO.output(IN2, GPIO.LOW)
+        GPIO.output(IN3, GPIO.LOW)
+        GPIO.output(IN4, GPIO.LOW)
 
 
-stop()
+
 
 def forward():
     
@@ -393,6 +394,9 @@ def right_button_command():
 if __name__ == "__main__":
     
     setup_GPIO()
+    stop()
+    
+    
     root = tk.Tk()
     root.title("Raspberry Pi Robot")
 
