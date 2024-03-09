@@ -45,7 +45,7 @@ def setup_GPIO():
 
 def stop():
     
-    global PMWA, PWMB
+    global PWMA, PWMB
     PWMA.ChangeDutyCycle(0)
     PWMB.ChangeDutyCycle(0)
     GPIO.output(IN1, GPIO.LOW)
@@ -424,7 +424,4 @@ if __name__ == "__main__":
     quit_button = ttk.Button(root, text="QUIT", command=quit_app)
     quit_button.pack(side=tk.LEFT, padx=10, pady=10)
 
-
-
-
-root.mainloop()
+    root.mainloop()
