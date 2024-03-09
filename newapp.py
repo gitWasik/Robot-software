@@ -24,19 +24,20 @@ ENB = 26
 PA = 20
 PB = 20
 
-
-GPIO.setmode(GPIO.BCM)
-GPIO.setwarnings(False)
-GPIO.setup(IN1, GPIO.OUT)
-GPIO.setup(IN2, GPIO.OUT)
-GPIO.setup(IN3, GPIO.OUT)
-GPIO.setup(IN4, GPIO.OUT)
-GPIO.setup(ENA, GPIO.OUT)
-GPIO.setup(ENB, GPIO.OUT)
-PWMA = GPIO.PWM(ENA, 500)
-PWMB = GPIO.PWM(ENB, 500)
-PWMA.start(PA)
-PWMB.start(PB)
+def setup_GPIO():
+    
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
+    GPIO.setup(IN1, GPIO.OUT)
+    GPIO.setup(IN2, GPIO.OUT)
+    GPIO.setup(IN3, GPIO.OUT)
+    GPIO.setup(IN4, GPIO.OUT)
+    GPIO.setup(ENA, GPIO.OUT)
+    GPIO.setup(ENB, GPIO.OUT)
+    PWMA = GPIO.PWM(ENA, 500)
+    PWMB = GPIO.PWM(ENB, 500)
+    PWMA.start(PA)
+    PWMB.start(PB)
 
 def stop():
     PWMA.ChangeDutyCycle(0)
@@ -388,16 +389,16 @@ black_image()
 hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
 hand_area_label.pack(side=tk.BOTTOM)
 
-forward_button = ttk.Button(root, text="FORWARD", command=forward_button_command)
+forward_button = ttk.Button(root, text="FORWARD",)
 forward_button.pack(side=tk.TOP, padx=10, pady=10)
 
-backward_button = ttk.Button(root, text="BACKWARD", command=backward_button_command)
+backward_button = ttk.Button(root, text="BACKWARD")
 backward_button.pack(side=tk.TOP, padx=10, pady=10)
 
-left_button = ttk.Button(root, text="LEFT", command=left_button_command)
+left_button = ttk.Button(root, text="LEFT")
 left_button.pack(side=tk.TOP, padx=10, pady=10)
 
-right_button = ttk.Button(root, text="RIGHT", command=right_button_command)
+right_button = ttk.Button(root, text="RIGHT")
 right_button.pack(side=tk.TOP, padx=10, pady=10)
 
 start_button = ttk.Button(root, text="START WEBCAM", command=start_webcam)
