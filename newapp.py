@@ -15,6 +15,8 @@ frame_label = None
 hand_area_label = None
 black_image_tk = None
 
+PWMA = None
+PWMB = None
 IN1 = 13
 IN2 = 12
 ENA = 6
@@ -24,8 +26,10 @@ ENB = 26
 PA = 20
 PB = 20
 
+
+
 def setup_GPIO():
-    
+    global IN1, IN2, ENA, IN3, ENB, PA, PB, PWMA, PWMB
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
     GPIO.setup(IN1, GPIO.OUT)
@@ -40,6 +44,8 @@ def setup_GPIO():
     PWMB.start(PB)
 
 def stop():
+    
+    global PMWA, PWMB
     PWMA.ChangeDutyCycle(0)
     PWMB.ChangeDutyCycle(0)
     GPIO.output(IN1, GPIO.LOW)
@@ -51,6 +57,8 @@ def stop():
 stop()
 
 def forward():
+    
+    global PWMA, PWMB
     PWMA.ChangeDutyCycle(PA)
     PWMB.ChangeDutyCycle(PB)
     GPIO.output(IN1, GPIO.HIGH)
@@ -59,6 +67,8 @@ def forward():
     GPIO.output(IN4, GPIO.LOW)
 
 def backward():
+    
+    global PWMA, PWMB
     PWMA.ChangeDutyCycle(PA)
     PWMB.ChangeDutyCycle(PB)
     GPIO.output(IN1, GPIO.LOW)
@@ -67,6 +77,7 @@ def backward():
     GPIO.output(IN4, GPIO.HIGH)
 
 def left():
+    global PWMA, PWMB
     PWMA.ChangeDutyCycle(30)
     PWMB.ChangeDutyCycle(30)
     GPIO.output(IN1, GPIO.LOW)
@@ -75,6 +86,7 @@ def left():
     GPIO.output(IN4, GPIO.LOW)
 
 def right():
+    global PWMA, PWMB
     PWMA.ChangeDutyCycle(30)
     PWMB.ChangeDutyCycle(30)
     GPIO.output(IN1, GPIO.HIGH)
@@ -83,12 +95,12 @@ def right():
     GPIO.output(IN4, GPIO.HIGH)
 
 def setPWMA(value):
-    global PA
+    global PA, PWMA
     PA = value
     PWMA.ChangeDutyCycle(PA)
 
 def setPWMB(value):
-    global PB
+    global PB, PWMB
     PB = value
     PWMB.ChangeDutyCycle(PB)
 
@@ -378,37 +390,39 @@ def right_button_command():
     right()
     print("Right button pressed")
     
+if __name__ == "__main__":
+    
+    setup_GPIO()
+    root = tk.Tk()
+    root.title("Raspberry Pi Robot")
 
-root = tk.Tk()
-root.title("Raspberry Pi Robot")
+    frame_label = tk.Label(root)   
+    frame_label.pack(side=tk.RIGHT)
+    black_image()
 
-frame_label = tk.Label(root)
-frame_label.pack(side=tk.RIGHT)
-black_image()
+    hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
+    hand_area_label.pack(side=tk.BOTTOM)
 
-hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
-hand_area_label.pack(side=tk.BOTTOM)
+    forward_button = ttk.Button(root, text="FORWARD",)
+    forward_button.pack(side=tk.TOP, padx=10, pady=10)
 
-forward_button = ttk.Button(root, text="FORWARD",)
-forward_button.pack(side=tk.TOP, padx=10, pady=10)
+    backward_button = ttk.Button(root, text="BACKWARD")
+    backward_button.pack(side=tk.TOP, padx=10, pady=10)
 
-backward_button = ttk.Button(root, text="BACKWARD")
-backward_button.pack(side=tk.TOP, padx=10, pady=10)
+    left_button = ttk.Button(root, text="LEFT")
+    left_button.pack(side=tk.TOP, padx=10, pady=10)
 
-left_button = ttk.Button(root, text="LEFT")
-left_button.pack(side=tk.TOP, padx=10, pady=10)
+    right_button = ttk.Button(root, text="RIGHT")
+    right_button.pack(side=tk.TOP, padx=10, pady=10)
 
-right_button = ttk.Button(root, text="RIGHT")
-right_button.pack(side=tk.TOP, padx=10, pady=10)
+    start_button = ttk.Button(root, text="START WEBCAM", command=start_webcam)
+    start_button.pack(side=tk.LEFT, padx=10, pady=10)
 
-start_button = ttk.Button(root, text="START WEBCAM", command=start_webcam)
-start_button.pack(side=tk.LEFT, padx=10, pady=10)
+    stop_button = ttk.Button(root, text="STOP", command=stop_webcam, state=tk.DISABLED)
+    stop_button.pack(side=tk.LEFT, padx=10, pady=10)
 
-stop_button = ttk.Button(root, text="STOP", command=stop_webcam, state=tk.DISABLED)
-stop_button.pack(side=tk.LEFT, padx=10, pady=10)
-
-quit_button = ttk.Button(root, text="QUIT", command=quit_app)
-quit_button.pack(side=tk.LEFT, padx=10, pady=10)
+    quit_button = ttk.Button(root, text="QUIT", command=quit_app)
+    quit_button.pack(side=tk.LEFT, padx=10, pady=10)
 
 
 
