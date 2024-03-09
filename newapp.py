@@ -277,8 +277,8 @@ def Capture_Video():
     global webcam_running, frame_label
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.8, min_tracking_confidence=0.7)
-    cam = cv2.VideoCapture(-1, cv2.CAP_DSHOW)  
-    cam.set(cv2.CAP_PROP_FPS,  30)  
+    cam = cv2.VideoCapture(0)  
+    #cam.set(cv2.CAP_PROP_FPS,  30)  
     frame_counter = 0
     pixel_size = 0.03
     scaling = pixel_size ** 2
