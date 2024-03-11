@@ -8,8 +8,8 @@ from PIL import Image, ImageTk
 import time
 #import RPi.GPIO as GPIO
 import Mock.GPIO as GPIO
-from picamera import PiCamera
-from picamera.array import PiCamera
+from picamera2 import Picamera2
+
 
 webcam_thread = None
 webcam_running = False
@@ -281,46 +281,42 @@ def Capture_Video():
     hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.8, min_tracking_confidence=0.7)
     #cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)  
     #cam.set(cv2.CAP_PROP_FPS,  30) 
-    camera = PiCamera()
-    camera.resolution = (640,480)
-    camera.framerate = 32
-    rawCapture = PiRGBArray(camera, size=(640,480))
-    time.sleep(0.1)
+    picam2 = Picamera2()
+    picam2.configure(picam2.create_video_configuration(main={"size":(640,480)}))
+    picam2.start()
     frame_counter = 0
     pixel_size = 0.03
     scaling = pixel_size ** 2
     open_hand_count = 0
     try:
-        for frame in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
-            if not webcam_running:
-                break
-            image = frame.array
+        while webcam_running:
+            image = picam2.capture_array()
             frame_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             results = hands.process(frame_rgb)
             if results.multi_hand_landmarks:
                 for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
                     hand_label = handedness.classification[0].label
                     orientation = Hand_Orientation(hand_landmarks, hand_label)
-                    x_min = min([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
-                    x_max = max([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
-                    y_min = min([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
-                    y_max = max([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
+                    x_min = min([lm.x for lm in hand_landmarks.landmark]) * image.shape[1]
+                    x_max = max([lm.x for lm in hand_landmarks.landmark]) * image.shape[1]
+                    y_min = min([lm.y for lm in hand_landmarks.landmark]) * image.shape[0]
+                    y_max = max([lm.y for lm in hand_landmarks.landmark]) * image.shape[0]
                     x_min, x_max, y_min, y_max = int(x_min), int(x_max), int(y_min), int(y_max)
-                    cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0,   255,   0),   2)
+                    cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0,   255,   0),   2)
                     orientation = Hand_Orientation(hand_landmarks, hand_label)
                     
                     if Like(hand_landmarks, hand_label):
-                        cv2.putText(frame, "Like",(x_min, y_min - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 0), 2)
+                        cv2.putText(image, "Like",(x_min, y_min - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 0), 2)
                         continue
                                     
                     if Victory_Sign(hand_landmarks, hand_label):
-                        cv2.putText(frame, "Victory sign",(x_min, y_min - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2)
+                        cv2.putText(image, "Victory sign",(x_min, y_min - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2)
                         continue
                     
                     if Hand_Open(hand_landmarks, hand_label) and orientation == "Inside":
                         open_hand_count +=   1
                         print(f"open hand {open_hand_count}")
-                        cv2.putText(frame, "Hand open", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                        cv2.putText(image, "Hand open", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
                         frame_counter +=1
                         if frame_counter == 15:
                             hand_area_pixels = (x_max - x_min) * (y_max - y_min)
@@ -329,9 +325,9 @@ def Capture_Video():
                             frame_counter = 0
                             hand_area = 0
                     elif not Hand_Open(hand_landmarks,hand_label):
-                        cv2.putText(frame, "Hand closed", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+                        cv2.putText(image, "Hand closed", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
                     else:
-                        cv2.putText(frame, "Outside", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+                        cv2.putText(image, "Outside", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
             cv2image = cv2.cvtColor(image, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
@@ -342,7 +338,7 @@ def Capture_Video():
             #    webcam_running = False
             #    break
     finally:
-        camera.close()
+        picam2.stop()
         cv2.destroyAllWindows()
 
 
