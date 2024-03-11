@@ -282,7 +282,9 @@ def Capture_Video():
     #cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)  
     #cam.set(cv2.CAP_PROP_FPS,  30) 
     picam2 = Picamera2()
-    picam2.configure(picam2.create_video_configuration(main={"size":(640,480)}))
+    video_config = picam2.create_video_configuration(main={"size":(640,480)},controls={"FrameRate": 30.0})
+    picam2.configure(video_config)
+    time.sleep(0.1)
     picam2.start()
     frame_counter = 0
     pixel_size = 0.03
