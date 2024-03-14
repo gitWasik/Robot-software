@@ -145,12 +145,12 @@ def Hand_Open(hand_landmarks,hand_label):
         ratio = wrist_to_fingertip / wrist_to_palm_base
         if ratio > 1:
             open_hand_signals += 1
-        elif ratio < 0.75:  # Adjust this threshold as needed
+        elif ratio < 0.75: 
             closed_hand_signals += 1
 
     if open_hand_signals == 5:
         return "Open"
-    elif closed_hand_signals >= 4:  # Consider a fist if at least 4 out of 5 fingertips are close to the wrist
+    elif closed_hand_signals >= 4: 
         return "Closed"
     else:
         return "Neither"
