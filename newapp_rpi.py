@@ -137,14 +137,24 @@ def Hand_Open(hand_landmarks,hand_label):
     wrist = np.array([hand_landmarks.landmark[wrist_id].x, hand_landmarks.landmark[wrist_id].y])
     palm_base = np.array([hand_landmarks.landmark[palm_base_id].x, hand_landmarks.landmark[palm_base_id].y])
     wrist_to_palm_base = np.linalg.norm(wrist - palm_base)
+
     open_hand_signals = 0
+    closed_hand_signals = 0
     for fingertip_id in fingertip_ids:
         fingertip = np.array([hand_landmarks.landmark[fingertip_id].x, hand_landmarks.landmark[fingertip_id].y])
         wrist_to_fingertip = np.linalg.norm(wrist - fingertip)
         ratio = wrist_to_fingertip / wrist_to_palm_base
         if ratio > 1:
             open_hand_signals += 1
-    return open_hand_signals == 5
+        elif ratio < 0.75: 
+            closed_hand_signals += 1
+
+    if open_hand_signals == 5:
+        return "Open"
+    elif closed_hand_signals >= 4: 
+        return "Closed"
+    else:
+        return "Neither"
 
 def Hand_Orientation(hand_landmarks, hand_label):
     ###TIPS
@@ -192,43 +202,31 @@ def Hand_Orientation(hand_landmarks, hand_label):
 
 def Like(hand_landmarks,hand_label):
   
-    thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
-    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
-    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y, hand_landmarks.landmark[12].z])
-    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y, hand_landmarks.landmark[16].z])
-    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y, hand_landmarks.landmark[20].z])
-    palm_base = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
-    
-    thumb_distance = np.linalg.norm(thumb_tip - palm_base)
-    index_distance = np.linalg.norm(index_tip - palm_base)
-    middle_distance = np.linalg.norm(middle_tip - palm_base)
-    ring_distance = np.linalg.norm(ring_tip - palm_base)
-    pinky_distance = np.linalg.norm(pinky_tip - palm_base)
-    
-    # Use the z-coordinate to help distinguish between inside and outside views
-    thumb_palm_z_diff = thumb_tip[2] - palm_base[2]
-    
-    # Check if the thumb is extended by comparing the distance of the thumb tip to the palm base against other fingers
-    thumb_extended = thumb_distance > max(index_distance, middle_distance, ring_distance, pinky_distance)
-    
-    # Calculate the average z-coordinate difference for retracted fingers as an additional check
-    average_z_diff_retracted_fingers = np.mean([index_tip[2] - palm_base[2], middle_tip[2] - palm_base[2], ring_tip[2] - palm_base[2], pinky_tip[2] - palm_base[2]])
-    
-    # Determine if the hand is showing the inside or outside based on the average z-difference
-    showing_outside = thumb_palm_z_diff > average_z_diff_retracted_fingers
-    
-    # For the "Like" gesture, the thumb should be extended more prominently in the z-direction when showing the outside
-    if showing_outside:
-        thumb_orientation_correct = thumb_palm_z_diff < 0  # Thumb tip is closer to the camera than the palm base
-    else:
-        index_mcp_x = hand_landmarks.landmark[5].x
-        if hand_label == "Right":
-            thumb_orientation_correct = thumb_tip[0] < index_mcp_x
-        else:
-            thumb_orientation_correct = thumb_tip[0] > index_mcp_x
-    
-    return thumb_extended and thumb_orientation_correct
+    thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y])
+    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
+    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
+    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y])
+    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y])
+    wrist = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y])
+  
+    thumb_distance_wrist = np.linalg.norm(thumb_tip - wrist)
+    index_distance_wrist = np.linalg.norm(index_tip - wrist)
+    middle_distance_wrist = np.linalg.norm(middle_tip - wrist)
+    ring_distance_wrist = np.linalg.norm(ring_tip - wrist)
+    pinky_distance_wrist = np.linalg.norm(pinky_tip - wrist)
+ 
+    thumb_index_distance = np.linalg.norm(thumb_tip - index_tip)
+    thumb_middle_distance = np.linalg.norm(thumb_tip - middle_tip)
+    thumb_ring_distance = np.linalg.norm(thumb_tip - ring_tip)
+    thumb_pinky_distance = np.linalg.norm(thumb_tip - pinky_tip)
 
+    thumb_extended = thumb_distance_wrist > 1.2 * min(index_distance_wrist, middle_distance_wrist, ring_distance_wrist, pinky_distance_wrist)
+
+    thumb_far= all(distance > 0.15 for distance in [thumb_index_distance, thumb_middle_distance, thumb_ring_distance, thumb_pinky_distance])  
+    
+    fingers_close = all(distance < 0.2 for distance in [np.linalg.norm(index_tip - middle_tip), np.linalg.norm(middle_tip - ring_tip), np.linalg.norm(ring_tip - pinky_tip)])  
+
+    return thumb_extended and thumb_far and fingers_close
 
         
 def Victory_Sign(hand_landmarks, hand_label):
@@ -341,6 +339,7 @@ def Capture_Video():
             #    break
     finally:
         picam2.stop()
+        hands.close()
         cv2.destroyAllWindows()
 
 
