@@ -374,6 +374,7 @@ def quit_app():
     global webcam_running
     webcam_running = False
     GPIO.cleanup()
+    stop_webcam()
     root.destroy()
 
 def forward_button_command():
