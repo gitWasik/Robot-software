@@ -6,7 +6,8 @@ import mediapipe as mp
 import numpy as np
 from PIL import Image, ImageTk
 import time
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
+import Mock.GPIO as GPIO
 
 
 webcam_thread = None
@@ -135,14 +136,24 @@ def Hand_Open(hand_landmarks,hand_label):
     wrist = np.array([hand_landmarks.landmark[wrist_id].x, hand_landmarks.landmark[wrist_id].y])
     palm_base = np.array([hand_landmarks.landmark[palm_base_id].x, hand_landmarks.landmark[palm_base_id].y])
     wrist_to_palm_base = np.linalg.norm(wrist - palm_base)
+
     open_hand_signals = 0
+    closed_hand_signals = 0
     for fingertip_id in fingertip_ids:
         fingertip = np.array([hand_landmarks.landmark[fingertip_id].x, hand_landmarks.landmark[fingertip_id].y])
         wrist_to_fingertip = np.linalg.norm(wrist - fingertip)
         ratio = wrist_to_fingertip / wrist_to_palm_base
         if ratio > 1:
             open_hand_signals += 1
-    return open_hand_signals == 5
+        elif ratio < 0.75:  # Adjust this threshold as needed
+            closed_hand_signals += 1
+
+    if open_hand_signals == 5:
+        return "Open"
+    elif closed_hand_signals >= 4:  # Consider a fist if at least 4 out of 5 fingertips are close to the wrist
+        return "Closed"
+    else:
+        return "Neither"
 
 def Hand_Orientation(hand_landmarks, hand_label):
     ###TIPS
@@ -188,44 +199,35 @@ def Hand_Orientation(hand_landmarks, hand_label):
             return "Outside"
         
 
-def Like(hand_landmarks,hand_label):
+def Like(hand_landmarks, hand_label):
+
+    thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y])
+    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
+    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
+    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y])
+    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y])
+    wrist = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y])
   
-    thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
-    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
-    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y, hand_landmarks.landmark[12].z])
-    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y, hand_landmarks.landmark[16].z])
-    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y, hand_landmarks.landmark[20].z])
-    palm_base = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
+    thumb_distance_wrist = np.linalg.norm(thumb_tip - wrist)
+    index_distance_wrist = np.linalg.norm(index_tip - wrist)
+    middle_distance_wrist = np.linalg.norm(middle_tip - wrist)
+    ring_distance_wrist = np.linalg.norm(ring_tip - wrist)
+    pinky_distance_wrist = np.linalg.norm(pinky_tip - wrist)
+ 
+    thumb_index_distance = np.linalg.norm(thumb_tip - index_tip)
+    thumb_middle_distance = np.linalg.norm(thumb_tip - middle_tip)
+    thumb_ring_distance = np.linalg.norm(thumb_tip - ring_tip)
+    thumb_pinky_distance = np.linalg.norm(thumb_tip - pinky_tip)
+
+    thumb_extended = thumb_distance_wrist > 1.2 * min(index_distance_wrist, middle_distance_wrist, ring_distance_wrist, pinky_distance_wrist)
+
+    thumb_far= all(distance > 0.15 for distance in [thumb_index_distance, thumb_middle_distance, thumb_ring_distance, thumb_pinky_distance])  
     
-    thumb_distance = np.linalg.norm(thumb_tip - palm_base)
-    index_distance = np.linalg.norm(index_tip - palm_base)
-    middle_distance = np.linalg.norm(middle_tip - palm_base)
-    ring_distance = np.linalg.norm(ring_tip - palm_base)
-    pinky_distance = np.linalg.norm(pinky_tip - palm_base)
-    
-    # Use the z-coordinate to help distinguish between inside and outside views
-    thumb_palm_z_diff = thumb_tip[2] - palm_base[2]
-    
-    # Check if the thumb is extended by comparing the distance of the thumb tip to the palm base against other fingers
-    thumb_extended = thumb_distance > max(index_distance, middle_distance, ring_distance, pinky_distance)
-    
-    # Calculate the average z-coordinate difference for retracted fingers as an additional check
-    average_z_diff_retracted_fingers = np.mean([index_tip[2] - palm_base[2], middle_tip[2] - palm_base[2], ring_tip[2] - palm_base[2], pinky_tip[2] - palm_base[2]])
-    
-    # Determine if the hand is showing the inside or outside based on the average z-difference
-    showing_outside = thumb_palm_z_diff > average_z_diff_retracted_fingers
-    
-    # For the "Like" gesture, the thumb should be extended more prominently in the z-direction when showing the outside
-    if showing_outside:
-        thumb_orientation_correct = thumb_palm_z_diff < 0  # Thumb tip is closer to the camera than the palm base
-    else:
-        index_mcp_x = hand_landmarks.landmark[5].x
-        if hand_label == "Right":
-            thumb_orientation_correct = thumb_tip[0] < index_mcp_x
-        else:
-            thumb_orientation_correct = thumb_tip[0] > index_mcp_x
-    
-    return thumb_extended and thumb_orientation_correct
+    fingers_close = all(distance < 0.2 for distance in [np.linalg.norm(index_tip - middle_tip), np.linalg.norm(middle_tip - ring_tip), np.linalg.norm(ring_tip - pinky_tip)])  
+
+    return thumb_extended and thumb_far and fingers_close
+
+
 
 
         
@@ -277,8 +279,8 @@ def Capture_Video():
     global webcam_running, frame_label
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.8, min_tracking_confidence=0.7)
-    cam = cv2.VideoCapture(0)  
-    #cam.set(cv2.CAP_PROP_FPS,  30)  
+    cam = cv2.VideoCapture(0)
+    cam.set(cv2.CAP_PROP_FPS, 30)
     frame_counter = 0
     pixel_size = 0.03
     scaling = pixel_size ** 2
@@ -302,44 +304,37 @@ def Capture_Video():
                     y_min = min([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
                     y_max = max([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
                     x_min, x_max, y_min, y_max = int(x_min), int(x_max), int(y_min), int(y_max)
-                    cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0,   255,   0),   2)
-                    orientation = Hand_Orientation(hand_landmarks, hand_label)
-                    
+                    cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+
+                    gestures_recognized = []
                     if Like(hand_landmarks, hand_label):
-                        cv2.putText(frame, "Like",(x_min, y_min - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 0), 2)
-                        continue
-                                    
+                        gestures_recognized.append("Like")
                     if Victory_Sign(hand_landmarks, hand_label):
-                        cv2.putText(frame, "Victory sign",(x_min, y_min - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2)
-                        continue
+                        gestures_recognized.append("Victory sign")
+                    hand_status = Hand_Open(hand_landmarks, hand_label)
+                    if hand_status == "Open" and orientation == "Inside":
+                        gestures_recognized.append("Hand open")
+                    elif hand_status == "Closed":
+                        gestures_recognized.append("Hand closed")
+                    if orientation == "Outside":
+                        gestures_recognized.append("Outside")
+
                     
-                    if Hand_Open(hand_landmarks, hand_label) and orientation == "Inside":
-                        open_hand_count +=   1
-                        print(f"open hand {open_hand_count}")
-                        cv2.putText(frame, "Hand open", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-                        frame_counter +=1
-                        if frame_counter == 15:
-                            hand_area_pixels = (x_max - x_min) * (y_max - y_min)
-                            hand_area = int(hand_area_pixels * scaling)
-                            hand_area_label.config(text=f"Hand area: {hand_area} UNITS")
-                            frame_counter = 0
-                            hand_area = 0
-                    elif not Hand_Open(hand_landmarks,hand_label):
-                        cv2.putText(frame, "Hand closed", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
-                    else:
-                        cv2.putText(frame, "Outside", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+                    for gesture in gestures_recognized:
+                        cv2.putText(frame, gesture, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                        y_min -= 30  
+
             cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
             frame_label.imgtk = imgtk
             frame_label.configure(image=imgtk)
             frame_label.image = imgtk
-            #if cv2.waitKey(1) & 0xFF == ord('q'):
-            #    webcam_running = False
-            #    break
     finally:
         cam.release()
         cv2.destroyAllWindows()
+
+
 
 
 def start_webcam():
