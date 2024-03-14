@@ -278,11 +278,11 @@ def Victory_Sign(hand_landmarks, hand_label):
 def Capture_Video():
     global webcam_running, frame_label
     mp_hands = mp.solutions.hands
-    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.8, min_tracking_confidence=0.7)
+    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.3, min_tracking_confidence=0.3)
     #cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)  
     #cam.set(cv2.CAP_PROP_FPS,  30) 
     picam2 = Picamera2()
-    video_config = picam2.create_video_configuration(main={"size":(640,480)},controls={"FrameRate": 30.0})
+    video_config = picam2.create_video_configuration(main={"size":(640,480)},controls={"FrameRate": 20.0})
     picam2.configure(video_config)
     time.sleep(0.1)
     picam2.start()
