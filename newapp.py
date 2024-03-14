@@ -332,6 +332,7 @@ def Capture_Video():
             frame_label.image = imgtk
     finally:
         cam.release()
+        hands.close()
         cv2.destroyAllWindows()
 
 
