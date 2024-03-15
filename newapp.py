@@ -355,6 +355,7 @@ def black_image():
     black_image = np.zeros((height, width, 3),dtype=np.uint8)
     black_image_pil = Image.fromarray(black_image)
     black_image_tk = ImageTk.PhotoImage(image=black_image_pil)
+    time.sleep(0.03)
     frame_label.imgtk = black_image_tk
     frame_label.configure(image=black_image_tk)
     frame_label.image = black_image_tk
