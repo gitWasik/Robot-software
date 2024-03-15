@@ -327,6 +327,8 @@ def Capture_Video():
             cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
+            
+            time.sleep(0.03)
             frame_label.imgtk = imgtk
             frame_label.configure(image=imgtk)
             frame_label.image = imgtk
