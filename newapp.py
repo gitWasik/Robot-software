@@ -15,6 +15,8 @@ webcam_running = False
 frame_label = None
 hand_area_label = None
 black_image_tk = None
+hands = None
+cam = None
 
 PWMA = None
 PWMB = None
@@ -276,19 +278,16 @@ def Victory_Sign(hand_landmarks, hand_label):
     return index_extended and middle_extended and ring_curled and pinky_curled  and thumb_not_extended and orientation == "Inside"
     
 def Capture_Video():
-    global webcam_running, frame_label
-    mp_hands = mp.solutions.hands
-    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.8, min_tracking_confidence=0.7)
-    cam = cv2.VideoCapture(0)
-    cam.set(cv2.CAP_PROP_FPS, 30)
+    global webcam_running, frame_label, cam
     frame_counter = 0
     pixel_size = 0.03
     scaling = pixel_size ** 2
-    if not cam.isOpened():
-        raise IOError("webcam not openable")
     open_hand_count = 0
     try:
         while webcam_running:
+            if not cam.isOpened():
+                cam.open(0)
+                raise IOError("webcam not opened")
             ret, frame = cam.read()
             if not ret:
                 print("no stream")
@@ -343,18 +342,24 @@ def Capture_Video():
             frame_label.configure(image=imgtk)
             frame_label.image = imgtk
     finally:
-        cam.release()
-        hands.close()
+        if cam and cam.isOpened():
+            cam.release()
+        if hands:
+            hands.close()
         cv2.destroyAllWindows()
 
 
 
-
 def start_webcam():
-    global webcam_thread, webcam_running
+    global webcam_thread, webcam_running, hands, cam
     if not webcam_running:
         webcam_running = True
+        cam = cv2.VideoCapture(0)
+        mp_hands = mp.solutions.hands
+        hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+        time.sleep(0.03)
         webcam_thread = threading.Thread(target=Capture_Video)
+        #time.sleep(0.03)
         webcam_thread.start()
         start_button.config(state=tk.DISABLED)
         stop_button.config(state=tk.NORMAL)
@@ -376,13 +381,20 @@ def stop_webcam():
         webcam_running = False
         start_button.config(state=tk.NORMAL)
         stop_button.config(state=tk.DISABLED)
-       
 
 def quit_app():
-    global webcam_running
+    global webcam_running, webcam_thread, cam, hands
     webcam_running = False
+    if cam and cam.isOpened():
+        cam.release()  
+    
+    if hands and getattr(hands, '_graph', None) is not None:
+        hands.close()  
+        hands = None  
     GPIO.cleanup()
-    root.destroy()
+    root.destroy()  
+
+
 
 def forward_button_command(event):
     forward()
@@ -414,7 +426,7 @@ if __name__ == "__main__":
     setup_GPIO()
     stop()
     
-    
+       
     root = tk.Tk()
     root.title("Raspberry Pi Robot")
 
@@ -433,10 +445,10 @@ if __name__ == "__main__":
     backward_button = ttk.Button(root, text="BACKWARD")
     backward_button.pack(side=tk.TOP, padx=10, pady=10)
 
-    left_button = ttk.Button(root, text="LEFT")
+    left_button = ttk.Button(root, text="LEFT",command=left_button_command)
     left_button.pack(side=tk.TOP, padx=10, pady=10)
 
-    right_button = ttk.Button(root, text="RIGHT")
+    right_button = ttk.Button(root, text="RIGHT",command=right_button_command)
     right_button.pack(side=tk.TOP, padx=10, pady=10)
     
     stop_moving_button = ttk.Button(root, text="STOP MOVING",command=stop_moving)
