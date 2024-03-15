@@ -314,6 +314,16 @@ def Capture_Video():
                     hand_status = Hand_Open(hand_landmarks, hand_label)
                     if hand_status == "Open" and orientation == "Inside":
                         gestures_recognized.append("Hand open")
+                        open_hand_count += 1
+                        time.sleep(0.03)
+                        print(f"open hand {open_hand_count}")
+                        frame_counter += 1
+                        if frame_counter == 15:
+                            hand_area_pixels = (x_max - x_min) * (y_max - y_min)
+                            hand_area = int(hand_area_pixels * scaling)
+                            hand_area_label.config(text=f"Hand area: {hand_area} UNITS")
+                            frame_counter = 0
+                            hand_area = 0
                     elif hand_status == "Closed":
                         gestures_recognized.append("Hand closed")
                     if orientation == "Outside":
@@ -374,9 +384,14 @@ def quit_app():
     GPIO.cleanup()
     root.destroy()
 
-def forward_button_command():
+def forward_button_command(event):
     forward()
     print("Forward button pressed")
+    root.after(5000, stop)
+
+def forward_button_released(event):
+    stop()
+    print("Forward button released")
     
 def backward_button_command():
     backward()
@@ -389,6 +404,10 @@ def left_button_command():
 def right_button_command():
     right()
     print("Right button pressed")
+
+def stop_moving():
+    stop()
+    print("Stop moving button pressed")
     
 if __name__ == "__main__":
     
@@ -406,8 +425,10 @@ if __name__ == "__main__":
     hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
     hand_area_label.pack(side=tk.BOTTOM)
 
-    forward_button = ttk.Button(root, text="FORWARD",)
+    forward_button = ttk.Button(root, text="FORWARD")
     forward_button.pack(side=tk.TOP, padx=10, pady=10)
+    forward_button.bind("<ButtonPress-1>", forward_button_command)
+    forward_button.bind("<ButtonRelease-1>", forward_button_released)
 
     backward_button = ttk.Button(root, text="BACKWARD")
     backward_button.pack(side=tk.TOP, padx=10, pady=10)
@@ -417,6 +438,9 @@ if __name__ == "__main__":
 
     right_button = ttk.Button(root, text="RIGHT")
     right_button.pack(side=tk.TOP, padx=10, pady=10)
+    
+    stop_moving_button = ttk.Button(root, text="STOP MOVING",command=stop_moving)
+    stop_moving_button.pack(side=tk.TOP, padx=10, pady=10)
 
     start_button = ttk.Button(root, text="START WEBCAM", command=start_webcam)
     start_button.pack(side=tk.LEFT, padx=10, pady=10)
