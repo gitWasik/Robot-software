@@ -16,6 +16,8 @@ webcam_running = False
 frame_label = None
 hand_area_label = None
 black_image_tk = None
+hands = None
+picam2 = None
 
 PWMA = None
 PWMB = None
@@ -228,6 +230,7 @@ def Like(hand_landmarks,hand_label):
 
     return thumb_extended and thumb_far and fingers_close
 
+
         
 def Victory_Sign(hand_landmarks, hand_label):
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
@@ -272,18 +275,9 @@ def Victory_Sign(hand_landmarks, hand_label):
     orientation = Hand_Orientation(hand_landmarks, hand_label)
     
     return index_extended and middle_extended and ring_curled and pinky_curled  and thumb_not_extended and orientation == "Inside"
-    
+
 def Capture_Video():
-    global webcam_running, frame_label
-    mp_hands = mp.solutions.hands
-    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.3, min_tracking_confidence=0.3)
-    #cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)  
-    #cam.set(cv2.CAP_PROP_FPS,  30) 
-    picam2 = Picamera2()
-    video_config = picam2.create_video_configuration(main={"size":(320,240)},controls={"FrameRate": 20.0})
-    picam2.configure(video_config)
-    time.sleep(0.1)
-    picam2.start()
+    global webcam_running, frame_label, picam2
     frame_counter = 0
     pixel_size = 0.03
     scaling = pixel_size ** 2
@@ -302,41 +296,44 @@ def Capture_Video():
                     y_min = min([lm.y for lm in hand_landmarks.landmark]) * image.shape[0]
                     y_max = max([lm.y for lm in hand_landmarks.landmark]) * image.shape[0]
                     x_min, x_max, y_min, y_max = int(x_min), int(x_max), int(y_min), int(y_max)
-                    cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0,   255,   0),   2)
-                    orientation = Hand_Orientation(hand_landmarks, hand_label)
-                    
+                    cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+
+                    gestures_recognized = []
                     if Like(hand_landmarks, hand_label):
-                        cv2.putText(image, "Like",(x_min, y_min - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 0), 2)
-                        continue
-                                    
+                        gestures_recognized.append("Like")
                     if Victory_Sign(hand_landmarks, hand_label):
-                        cv2.putText(image, "Victory sign",(x_min, y_min - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2)
-                        continue
-                    
-                    if Hand_Open(hand_landmarks, hand_label) and orientation == "Inside":
-                        open_hand_count +=   1
+                        gestures_recognized.append("Victory sign")
+                    hand_status = Hand_Open(hand_landmarks, hand_label)
+                    if hand_status == "Open" and orientation == "Inside":
+                        gestures_recognized.append("Hand open")
+                        open_hand_count += 1
+                        time.sleep(0.03)
                         print(f"open hand {open_hand_count}")
-                        cv2.putText(image, "Hand open", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-                        frame_counter +=1
+                        frame_counter += 1
                         if frame_counter == 15:
                             hand_area_pixels = (x_max - x_min) * (y_max - y_min)
                             hand_area = int(hand_area_pixels * scaling)
                             hand_area_label.config(text=f"Hand area: {hand_area} UNITS")
                             frame_counter = 0
                             hand_area = 0
-                    elif not Hand_Open(hand_landmarks,hand_label):
-                        cv2.putText(image, "Hand closed", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
-                    else:
-                        cv2.putText(image, "Outside", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+                    elif hand_status == "Closed":
+                        gestures_recognized.append("Hand closed")
+                    if orientation == "Outside":
+                        gestures_recognized.append("Outside")
+
+                    
+                    for gesture in gestures_recognized:
+                        cv2.putText(image, gesture, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                        y_min -= 30  
+
             cv2image = cv2.cvtColor(image, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
+            
+            time.sleep(0.03)
             frame_label.imgtk = imgtk
             frame_label.configure(image=imgtk)
             frame_label.image = imgtk
-            #if cv2.waitKey(1) & 0xFF == ord('q'):
-            #    webcam_running = False
-            #    break
     finally:
         picam2.stop()
         hands.close()
@@ -344,9 +341,17 @@ def Capture_Video():
 
 
 def start_webcam():
-    global webcam_thread, webcam_running
+    global webcam_thread, webcam_running, hands, picam2
     if not webcam_running:
         webcam_running = True
+        mp_hands = mp.solutions.hands
+        hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.8, min_tracking_confidence=0.7)
+        picam2 = Picamera2()
+        video_config = picam2.create_video_configuration(main={"size":(640,480)},controls={"FrameRate": 30.0})
+        picam2.configure(video_config)
+        time.sleep(0.1)
+        picam2.start()
+        time.sleep(0.03)
         webcam_thread = threading.Thread(target=Capture_Video)
         webcam_thread.start()
         start_button.config(state=tk.DISABLED)
@@ -358,6 +363,7 @@ def black_image():
     black_image = np.zeros((height, width, 3),dtype=np.uint8)
     black_image_pil = Image.fromarray(black_image)
     black_image_tk = ImageTk.PhotoImage(image=black_image_pil)
+    time.sleep(0.03)
     frame_label.imgtk = black_image_tk
     frame_label.configure(image=black_image_tk)
     frame_label.image = black_image_tk
@@ -371,15 +377,25 @@ def stop_webcam():
        
 
 def quit_app():
-    global webcam_running
+    global webcam_running, picam2, webcam_thread, hands
     webcam_running = False
+    if picam2:
+        picam2.close()
+        
+    if hands and getattr(hands, '_graph', None) is not None:
+        hands.close()
+        hands = None
     GPIO.cleanup()
-    stop_webcam()
     root.destroy()
 
-def forward_button_command():
+def forward_button_command(event):
     #forward()
     print("Forward button pressed")
+    root.after(5000, stop)
+
+def forward_button_released(event):
+    #stop()
+    print("Forward button released")
     
 def backward_button_command():
     #backward()
@@ -392,13 +408,17 @@ def left_button_command():
 def right_button_command():
     #right()
     print("Right button pressed")
+
+def stop_moving():
+    #stop()
+    print("Stop moving button pressed")
     
 if __name__ == "__main__":
     
     setup_GPIO()
     stop()
     
-    
+       
     root = tk.Tk()
     root.title("Raspberry Pi Robot")
 
@@ -409,17 +429,22 @@ if __name__ == "__main__":
     hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
     hand_area_label.pack(side=tk.BOTTOM)
 
-    forward_button = ttk.Button(root, text="FORWARD",)
+    forward_button = ttk.Button(root, text="FORWARD")
     forward_button.pack(side=tk.TOP, padx=10, pady=10)
+    forward_button.bind("<ButtonPress-1>", forward_button_command)
+    forward_button.bind("<ButtonRelease-1>", forward_button_released)
 
     backward_button = ttk.Button(root, text="BACKWARD")
     backward_button.pack(side=tk.TOP, padx=10, pady=10)
 
-    left_button = ttk.Button(root, text="LEFT")
+    left_button = ttk.Button(root, text="LEFT",command=left_button_command)
     left_button.pack(side=tk.TOP, padx=10, pady=10)
 
-    right_button = ttk.Button(root, text="RIGHT")
+    right_button = ttk.Button(root, text="RIGHT",command=right_button_command)
     right_button.pack(side=tk.TOP, padx=10, pady=10)
+    
+    stop_moving_button = ttk.Button(root, text="STOP MOVING",command=stop_moving)
+    stop_moving_button.pack(side=tk.TOP, padx=10, pady=10)
 
     start_button = ttk.Button(root, text="START WEBCAM", command=start_webcam)
     start_button.pack(side=tk.LEFT, padx=10, pady=10)
