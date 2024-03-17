@@ -424,7 +424,6 @@ if __name__ == "__main__":
 
     frame_label = tk.Label(root)   
     frame_label.pack(side=tk.RIGHT)
-    black_image()
 
     hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
     hand_area_label.pack(side=tk.BOTTOM)
@@ -454,5 +453,7 @@ if __name__ == "__main__":
 
     quit_button = ttk.Button(root, text="QUIT", command=quit_app)
     quit_button.pack(side=tk.LEFT, padx=10, pady=10)
+    
+    black_image()
 
     root.mainloop()
