@@ -8,7 +8,7 @@ from PIL import Image, ImageTk
 import time
 #import RPi.GPIO as GPIO
 import Mock.GPIO as GPIO
-
+import sys
 
 webcam_thread = None
 webcam_running = False
@@ -126,7 +126,6 @@ def setMotor(left, right):
         GPIO.output(IN4, GPIO.HIGH)
         PWMB.ChangeDutyCycle(0 - left)
         
-
 def Hand_Open(hand_landmarks,hand_label):
     if Victory_Sign(hand_landmarks,hand_label):
         return False
@@ -277,6 +276,10 @@ def Victory_Sign(hand_landmarks, hand_label):
     
     return index_extended and middle_extended and ring_curled and pinky_curled  and thumb_not_extended and orientation == "Inside"
     
+def Gesture_Navigation():
+    #tutaj cos kiedys bedzie
+    print("Gesture navigation mode :)")
+
 def Capture_Video():
     global webcam_running, frame_label, cam
     frame_counter = 0
@@ -393,6 +396,13 @@ def quit_app():
         hands = None  
     GPIO.cleanup()
     root.destroy()  
+    
+def textbox_messenger(text_widget):
+    def write (string):
+        text_widget.insert(tk.END,string)
+        text_widget.see(tk.END)
+    sys.stdout.write = write
+    sys.stderr.write = write
 
 
 
@@ -442,6 +452,9 @@ if __name__ == "__main__":
     hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
     hand_area_label.pack(side=tk.BOTTOM)
 
+    console_text = tk.Text(root, height=10, width=50)
+    console_text.pack(anchor=tk.SW,padx=10, pady=10)
+
     forward_button = ttk.Button(root, text="FORWARD")
     forward_button.pack(side=tk.TOP, padx=10, pady=10)
     forward_button.bind("<ButtonPress-1>", forward_button_command)
@@ -469,5 +482,9 @@ if __name__ == "__main__":
 
     quit_button = ttk.Button(root, text="QUIT", command=quit_app)
     quit_button.pack(side=tk.LEFT, padx=10, pady=10)
+    
+    
+    
+    textbox_messenger(console_text)
 
     root.mainloop()
