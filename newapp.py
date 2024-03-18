@@ -405,9 +405,14 @@ def forward_button_released(event):
     stop()
     print("Forward button released")
     
-def backward_button_command():
+def backward_button_command(event):
     backward()
     print("Backward button pressed")
+    root.after(5000, stop)
+    
+def backward_button_released(event):
+    stop()
+    print("Backward button released")
     
 def left_button_command():
     left()
@@ -444,6 +449,8 @@ if __name__ == "__main__":
 
     backward_button = ttk.Button(root, text="BACKWARD")
     backward_button.pack(side=tk.TOP, padx=10, pady=10)
+    backward_button.bind("<ButtonPress-1>", backward_button_command)
+    backward_button.bind("<ButtonRelease-1>",)
 
     left_button = ttk.Button(root, text="LEFT",command=left_button_command)
     left_button.pack(side=tk.TOP, padx=10, pady=10)
