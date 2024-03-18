@@ -388,30 +388,35 @@ def quit_app():
     GPIO.cleanup()
     root.destroy()
 
+
 def forward_button_command(event):
-    #forward()
+    forward()
     print("Forward button pressed")
     root.after(5000, stop)
 
 def forward_button_released(event):
-    #stop()
+    stop()
     print("Forward button released")
     
-def backward_button_command():
-    #backward()
+def backward_button_command(event):
+    backward()
     print("Backward button pressed")
     root.after(5000, stop)
     
+def backward_button_released(event):
+    stop()
+    print("Backward button released")
+    
 def left_button_command():
-    #left()
+    left()
     print("Left button pressed")
     
 def right_button_command():
-    #right()
+    right()
     print("Right button pressed")
 
 def stop_moving():
-    #stop()
+    stop()
     print("Stop moving button pressed")
     
 if __name__ == "__main__":
@@ -425,6 +430,7 @@ if __name__ == "__main__":
 
     frame_label = tk.Label(root)   
     frame_label.pack(side=tk.RIGHT)
+    black_image()
 
     hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
     hand_area_label.pack(side=tk.BOTTOM)
@@ -436,6 +442,8 @@ if __name__ == "__main__":
 
     backward_button = ttk.Button(root, text="BACKWARD")
     backward_button.pack(side=tk.TOP, padx=10, pady=10)
+    backward_button.bind("<ButtonPress-1>", backward_button_command)
+    backward_button.bind("<ButtonRelease-1>",)
 
     left_button = ttk.Button(root, text="LEFT",command=left_button_command)
     left_button.pack(side=tk.TOP, padx=10, pady=10)
@@ -454,7 +462,5 @@ if __name__ == "__main__":
 
     quit_button = ttk.Button(root, text="QUIT", command=quit_app)
     quit_button.pack(side=tk.LEFT, padx=10, pady=10)
-    
-    black_image()
 
     root.mainloop()
