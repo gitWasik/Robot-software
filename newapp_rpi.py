@@ -400,6 +400,7 @@ def forward_button_released(event):
 def backward_button_command():
     #backward()
     print("Backward button pressed")
+    root.after(5000, stop)
     
 def left_button_command():
     #left()
