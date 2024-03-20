@@ -132,7 +132,7 @@ def Hand_Open(hand_landmarks,hand_label):
     if Like(hand_landmarks, hand_label):
         return False
     fingertip_ids = [4, 8, 12, 16, 20]
-    wrist_id = 0
+    wrist_id = 0 
     palm_base_id = 9
     wrist = np.array([hand_landmarks.landmark[wrist_id].x, hand_landmarks.landmark[wrist_id].y])
     palm_base = np.array([hand_landmarks.landmark[palm_base_id].x, hand_landmarks.landmark[palm_base_id].y])
@@ -144,20 +144,19 @@ def Hand_Open(hand_landmarks,hand_label):
         fingertip = np.array([hand_landmarks.landmark[fingertip_id].x, hand_landmarks.landmark[fingertip_id].y])
         wrist_to_fingertip = np.linalg.norm(wrist - fingertip)
         ratio = wrist_to_fingertip / wrist_to_palm_base
-        if ratio > 1:
+        if ratio > 0.8:
             open_hand_signals += 1
-        elif ratio < 0.75: 
+        elif ratio < 0.5: 
             closed_hand_signals += 1
 
     if open_hand_signals == 5:
         return "Open"
-    elif closed_hand_signals >= 4: 
+    elif closed_hand_signals <= 4: 
         return "Closed"
     else:
         return "Neither"
 
 def Hand_Orientation(hand_landmarks, hand_label):
-    ###TIPS
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y, hand_landmarks.landmark[12].z])
