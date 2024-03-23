@@ -130,7 +130,47 @@ def setMotor(left, right):
 #===========================================================================================================
 #GESTY 
 
-def Znak_S(hand_landmarks, hand_label):
+def Hand_Orientation(hand_landmarks, hand_label):
+    thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
+    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
+    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y, hand_landmarks.landmark[12].z])
+    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y, hand_landmarks.landmark[20].z])
+    
+    index_base = np.array([hand_landmarks.landmark[5].x, hand_landmarks.landmark[5].y, hand_landmarks.landmark[5].z])
+    middle_base = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y, hand_landmarks.landmark[9].z])
+    pinky_base = np.array([hand_landmarks.landmark[17].x, hand_landmarks.landmark[17].y, hand_landmarks.landmark[17].z])
+    index_knuckle = np.array([hand_landmarks.landmark[6].x, hand_landmarks.landmark[6].y, hand_landmarks.landmark[6].z])
+    middle_knuckle = np.array([hand_landmarks.landmark[10].x, hand_landmarks.landmark[10].y, hand_landmarks.landmark[10].z])
+    pinky_knuckle = np.array([hand_landmarks.landmark[14].x, hand_landmarks.landmark[14].y, hand_landmarks.landmark[14].z])
+    
+    thumb_to_index_base = index_base - thumb_tip
+    thumb_to_middle_base = middle_base - thumb_tip
+    thumb_to_pinky_base = pinky_base - thumb_tip
+    thumb_to_index_knuckle = index_knuckle - thumb_tip
+    thumb_to_middle_knuckle = middle_knuckle - thumb_tip
+    thumb_to_pinky_knuckle = pinky_knuckle - thumb_tip
+    
+    cross_index_base = np.cross(thumb_to_index_base, thumb_to_pinky_base)
+    cross_middle_base = np.cross(thumb_to_middle_base, thumb_to_pinky_base)
+    cross_index_knuckle = np.cross(thumb_to_index_knuckle, thumb_to_pinky_knuckle)
+    cross_middle_knuckle = np.cross(thumb_to_middle_knuckle, thumb_to_pinky_knuckle)
+    
+    avg_z_base = (cross_index_base[2] + cross_middle_base[2]) / 2
+    avg_z_knuckle = (cross_index_knuckle[2] + cross_middle_knuckle[2]) / 2
+    
+    if hand_label == "Right":
+        if avg_z_base > 0 and avg_z_knuckle > 0:
+            return "Inside"
+        else:
+            return "Outside"
+    else:
+        if avg_z_base < 0 and avg_z_knuckle < 0:
+            return "Inside"
+        else:
+            return "Outside"
+        
+        
+def Znak_S(hand_landmarks,hand_label):
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
@@ -141,20 +181,19 @@ def Znak_S(hand_landmarks, hand_label):
     fingertips_center = (thumb_tip + index_tip + middle_tip + ring_tip + pinky_tip) / 5
     center_to_palm_distance = np.linalg.norm(fingertips_center - palm_base)
     
-    thumb_to_center_distance = np.linalg.norm([thumb_tip - fingertips_center])
-    index_to_center_distance = np.linalg.norm([index_tip - fingertips_center])
-    middle_to_center_distance = np.linalg.norm([middle_tip - fingertips_center])
-    ring_to_center_distance = np.linalg.norm([ring_tip - fingertips_center])
-    pinky_to_center_distance = np.linalg.norm([pinky_tip - fingertips_center])
+    thumb_to_center_distance = np.linalg.norm(thumb_tip - fingertips_center)
+    index_to_center_distance = np.linalg.norm(index_tip - fingertips_center)
+    middle_to_center_distance = np.linalg.norm(middle_tip - fingertips_center)
+    ring_to_center_distance = np.linalg.norm(ring_tip - fingertips_center)
+    pinky_to_center_distance = np.linalg.norm(pinky_tip - fingertips_center)
     
-    if(center_to_palm_distance < max(thumb_to_center_distance, index_to_center_distance,
-                                     middle_to_center_distance, ring_to_center_distance, pinky_to_center_distance)):
+    if center_to_palm_distance < max(thumb_to_center_distance, index_to_center_distance,
+                                     middle_to_center_distance, ring_to_center_distance, pinky_to_center_distance):
         return True
     else:
         return False
-    
-def Znak_F(hand_landmarks, hand_label):
 
+def Znak_F(hand_landmarks, hand_label):
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
@@ -177,9 +216,7 @@ def Znak_F(hand_landmarks, hand_label):
     ring_extended = ring_tip[1] < index_tip[1] if hand_label == "Right" else ring_tip[1] > index_tip[1]
     pinky_extended = pinky_tip[1] < index_tip[1] if hand_label == "Right" else pinky_tip[1] > index_tip[1]
 
-    
     touch_threshold = 0.05  
-
 
     if index_thumb_distance <= touch_threshold and middle_extended and ring_extended and pinky_extended and orientation_correct:
         return True
@@ -267,7 +304,6 @@ def Capture_Video():
     frame_counter = 0
     pixel_size = 0.03
     scaling = pixel_size ** 2
-    open_hand_count = 0
     try:
         while webcam_running:
             if not cam.isOpened():
@@ -290,33 +326,25 @@ def Capture_Video():
                     x_min, x_max, y_min, y_max = int(x_min), int(x_max), int(y_min), int(y_max)
                     cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
 
-                    gestures_recognized = []
-                    if Like(hand_landmarks, hand_label):
-                        gestures_recognized.append("Like")
-                    if Victory_Sign(hand_landmarks, hand_label):
-                        gestures_recognized.append("Victory sign")
-                    hand_status = Hand_Open(hand_landmarks, hand_label)
-                    if hand_status == "Open" and orientation == "Inside":
-                        gestures_recognized.append("Hand open")
-                        open_hand_count += 1
-                        time.sleep(0.03)
-                        print(f"open hand {open_hand_count}")
-                        frame_counter += 1
-                        if frame_counter == 15:
-                            hand_area_pixels = (x_max - x_min) * (y_max - y_min)
-                            hand_area = int(hand_area_pixels * scaling)
-                            hand_area_label.config(text=f"Hand area: {hand_area} UNITS")
-                            frame_counter = 0
-                            hand_area = 0
-                    elif hand_status == "Closed":
-                        gestures_recognized.append("Hand closed")
-                    if orientation == "Outside":
-                        gestures_recognized.append("Outside")
+                    gesture_functions = {
+                        Znak_S: "S Sign",
+                        Znak_F: "F Sign",
+                        Znak_L: "L Sign",
+                        Znak_R: "R Sign"
+                    }
 
-                    
-                    for gesture in gestures_recognized:
-                        cv2.putText(frame, gesture, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-                        y_min -= 30  
+                    gesture_detected = False
+                    for gesture_func, gesture_label in gesture_functions.items():
+                        if gesture_func(hand_landmarks, hand_label):
+                            gesture_detected = True
+                            cv2.putText(frame, gesture_label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                            frame_counter += 1
+                            if frame_counter == 15:
+                                hand_area_pixels = (x_max - x_min) * (y_max - y_min)
+                                hand_area = int(hand_area_pixels * scaling)
+                                hand_area_label.config(text=f"Hand area: {hand_area} UNITS")
+                                frame_counter = 0
+                            break
 
             cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(cv2image)
@@ -332,6 +360,7 @@ def Capture_Video():
         if hands:
             hands.close()
         cv2.destroyAllWindows()
+
 
 
 
