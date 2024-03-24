@@ -169,127 +169,102 @@ def Hand_Orientation(hand_landmarks, hand_label):
         else:
             return "Outside"
         
-        
-def Znak_S(hand_landmarks,hand_label):
+
+
+def Znak_S(hand_landmarks, hand_label):
+   
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y])
-    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
-    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
-    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y])
-    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y])
+    index_finger_mcp = np.array([hand_landmarks.landmark[5].x, hand_landmarks.landmark[5].y])  # Index finger MCP joint
+    middle_finger_mcp = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y])  # Middle finger MCP joint
+    index_finger_pip = np.array([hand_landmarks.landmark[6].x, hand_landmarks.landmark[6].y])  # Index finger PIP joint
+    middle_finger_pip = np.array([hand_landmarks.landmark[10].x, hand_landmarks.landmark[10].y])  # Middle finger PIP joint
+
     
-    palm_base = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y])
-    fingertips_center = (thumb_tip + index_tip + middle_tip + ring_tip + pinky_tip) / 5
-    center_to_palm_distance = np.linalg.norm(fingertips_center - palm_base)
+    if hand_label == "Right":
+        thumb_overlaps = thumb_tip[0] > index_finger_mcp[0] and thumb_tip[0] > middle_finger_mcp[0]
+    else:  
+        thumb_overlaps = thumb_tip[0] < index_finger_mcp[0] and thumb_tip[0] < middle_finger_mcp[0]
+
     
-    thumb_to_center_distance = np.linalg.norm(thumb_tip - fingertips_center)
-    index_to_center_distance = np.linalg.norm(index_tip - fingertips_center)
-    middle_to_center_distance = np.linalg.norm(middle_tip - fingertips_center)
-    ring_to_center_distance = np.linalg.norm(ring_tip - fingertips_center)
-    pinky_to_center_distance = np.linalg.norm(pinky_tip - fingertips_center)
-    
-    if center_to_palm_distance < max(thumb_to_center_distance, index_to_center_distance,
-                                     middle_to_center_distance, ring_to_center_distance, pinky_to_center_distance):
+    thumb_below_index_pip = thumb_tip[1] >= index_finger_pip[1]
+    thumb_below_middle_pip = thumb_tip[1] >= middle_finger_pip[1]
+
+    if thumb_overlaps and thumb_below_index_pip and thumb_below_middle_pip:
         return True
     else:
         return False
 
+
+
 def Znak_F(hand_landmarks, hand_label):
+    
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
     ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y])
     pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y])
-
-    palm_base = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y])
-
-    palm_to_index_vector = index_tip - palm_base
-    palm_to_thumb_vector = thumb_tip - palm_base
-
-    if hand_label == "Right":
-        orientation_correct = palm_to_thumb_vector[0] < palm_to_index_vector[0]
-    else:
-        orientation_correct = palm_to_thumb_vector[0] > palm_to_index_vector[0]
-
-    index_thumb_distance = np.linalg.norm(thumb_tip - index_tip)
+    middle_mcp = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y])
+    ring_mcp = np.array([hand_landmarks.landmark[13].x, hand_landmarks.landmark[13].y])
+    pinky_mcp = np.array([hand_landmarks.landmark[17].x, hand_landmarks.landmark[17].y])
     
-    middle_extended = middle_tip[1] < index_tip[1] if hand_label == "Right" else middle_tip[1] > index_tip[1]
-    ring_extended = ring_tip[1] < index_tip[1] if hand_label == "Right" else ring_tip[1] > index_tip[1]
-    pinky_extended = pinky_tip[1] < index_tip[1] if hand_label == "Right" else pinky_tip[1] > index_tip[1]
-
+    thumb_index_distance = np.linalg.norm(thumb_tip - index_tip)
     touch_threshold = 0.05  
-
-    if index_thumb_distance <= touch_threshold and middle_extended and ring_extended and pinky_extended and orientation_correct:
+    thumb_index_touching = thumb_index_distance < touch_threshold
+     
+    extended_threshold = 0.02  
+    middle_extended = (middle_tip[1] < middle_mcp[1] - extended_threshold)
+    ring_extended = (ring_tip[1] < ring_mcp[1] - extended_threshold)
+    pinky_extended = (pinky_tip[1] < pinky_mcp[1] - extended_threshold)
+    
+    if thumb_index_touching and middle_extended and ring_extended and pinky_extended:
         return True
     else:
         return False
 
 def Znak_L(hand_landmarks, hand_label):
-    def angle_helper(v1, v2):
-        unit_v1 = v1 / np.linalg.norm(v1)
-        unit_v2 = v2 / np.linalg.norm(v2)
-        product = np.dot(unit_v1, unit_v2)
-        angle = np.arccos(np.clip(product, -1.0, 1.0))
-        return np.degrees(angle)
-    
+
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
     ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y])
     pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y])
-    
-    middle_mcp = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y])
-    ring_mcp = np.array([hand_landmarks.landmark[13].x, hand_landmarks.landmark[13].y])
-    pinky_mcp = np.array([hand_landmarks.landmark[17].x, hand_landmarks.landmark[17].y])
-    
-    middle_finger_curled = np.linalg.norm(middle_tip - middle_mcp) < np.linalg.norm(index_tip - middle_mcp)
-    ring_finger_curled = np.linalg.norm(ring_tip - ring_mcp) < np.linalg.norm(index_tip - ring_mcp)
-    pinky_finger_curled = np.linalg.norm(pinky_tip - pinky_mcp) < np.linalg.norm(index_tip - pinky_mcp)
-    
-    thumb_index_vector = index_tip - thumb_tip
     palm_base = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y])
-    palm_to_index_vector = index_tip - palm_base
+
     
-    angle = angle_helper(thumb_index_vector, palm_to_index_vector)
-    
-    angle_check = False
-    if hand_label == "Right":
-        angle_check = 75 <= angle <= 105 and thumb_tip[0] < index_tip[0]
-    elif hand_label == "Left":
-        angle_check = 75 <= angle <= 105 and thumb_tip[0] > index_tip[0]
-    
-    if middle_finger_curled and ring_finger_curled and pinky_finger_curled and angle_check:
+    index_to_palm = np.linalg.norm(index_tip - palm_base)
+    middle_to_palm = np.linalg.norm(middle_tip - palm_base)
+    ring_to_palm = np.linalg.norm(ring_tip - palm_base)
+    pinky_to_palm = np.linalg.norm(pinky_tip - palm_base)
+    thumb_to_palm = np.linalg.norm(thumb_tip - palm_base)
+
+    extended_threshold = 0.2  
+    distance_threshold = 0.3
+
+    index_extended = index_to_palm > extended_threshold
+    thumb_extended = thumb_to_palm > extended_threshold  
+    other_fingers_curled = all(dist < distance_threshold for dist in [middle_to_palm, ring_to_palm, pinky_to_palm])
+
+    if index_extended and thumb_extended and other_fingers_curled:
         return True
     else:
         return False
-    
 def Znak_R(hand_landmarks, hand_label):
+    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
+    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y, hand_landmarks.landmark[12].z])
     
-    thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y])
-    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
-    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
-    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y])
-    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y])
-
-    ring_mcp = np.array([hand_landmarks.landmark[13].x, hand_landmarks.landmark[13].y])
-    pinky_mcp = np.array([hand_landmarks.landmark[17].x, hand_landmarks.landmark[17].y])
-
-    wrist = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y])
-    ring_finger_curled = np.linalg.norm(ring_tip - ring_mcp) < np.linalg.norm(index_tip - ring_mcp)
-    pinky_finger_curled = np.linalg.norm(pinky_tip - pinky_mcp) < np.linalg.norm(index_tip - pinky_mcp)
-
-    if hand_label == "Right":
-        fingers_crossed = index_tip[0] > middle_tip[0]
-    else: 
-        fingers_crossed = index_tip[0] < middle_tip[0]
-
-    thumb_extended = np.linalg.norm(thumb_tip - wrist) > max(np.linalg.norm(ring_tip - wrist), np.linalg.norm(pinky_tip - wrist))
-
-    thumb_orientation_correct = (thumb_tip[1] < wrist[1]) if hand_label == "Right" else (thumb_tip[1] > wrist[1])
-
-    if ring_finger_curled and pinky_finger_curled and fingers_crossed and thumb_extended and thumb_orientation_correct:
+    index_mcp = np.array([hand_landmarks.landmark[5].x, hand_landmarks.landmark[5].y, hand_landmarks.landmark[5].z])
+    middle_mcp = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y, hand_landmarks.landmark[9].z])
+    
+    fingers_crossed = ((index_tip[0] < middle_tip[0] and index_mcp[0] > middle_mcp[0]) or
+                       (index_tip[0] > middle_tip[0] and index_mcp[0] < middle_mcp[0])) if hand_label == "Right" else (
+                       (index_tip[0] > middle_tip[0] and index_mcp[0] < middle_mcp[0]) or
+                       (index_tip[0] < middle_tip[0] and index_mcp[0] > middle_mcp[0]))
+    
+    if fingers_crossed:
         return True
     else:
         return False
+
 
         
 def Gesture_Navigation():
