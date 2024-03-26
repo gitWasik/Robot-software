@@ -257,41 +257,32 @@ def Znak_L(hand_landmarks, hand_label):
     else:
         return False
 
+import numpy as np
+
 def Znak_R(hand_landmarks, hand_label):
-    # Extracting landmarks for relevant points
+ 
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
-    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y])
-    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y])
-    index_mcp = np.array([hand_landmarks.landmark[5].x, hand_landmarks.landmark[5].y])
-    middle_mcp = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y])
-    ring_mcp = np.array([hand_landmarks.landmark[13].x, hand_landmarks.landmark[13].y])
-    pinky_mcp = np.array([hand_landmarks.landmark[17].x, hand_landmarks.landmark[17].y])
-    palm_base = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y])
+    index_pip = np.array([hand_landmarks.landmark[6].x, hand_landmarks.landmark[6].y])
+    middle_pip = np.array([hand_landmarks.landmark[10].x, hand_landmarks.landmark[10].y])
 
- 
-    index_middle_distance = np.linalg.norm(index_tip - middle_tip)
-    index_ring_distance = np.linalg.norm(index_tip - ring_mcp)
-   
-    fingers_close = index_middle_distance < index_ring_distance
- 
+    pip_distance = np.linalg.norm(index_pip - middle_pip)
+
     if hand_label == "Right":
-        fingers_crossed = index_tip[0] < middle_tip[0]
-    else:  
         fingers_crossed = index_tip[0] > middle_tip[0]
+    else:
+        fingers_crossed = index_tip[0] < middle_tip[0]
 
-    index_extended = np.linalg.norm(index_tip - index_mcp) > np.linalg.norm(ring_tip - ring_mcp)
-    middle_extended = np.linalg.norm(middle_tip - middle_mcp) > np.linalg.norm(pinky_tip - pinky_mcp)
+    thumb_cmc = np.array([hand_landmarks.landmark[1].x, hand_landmarks.landmark[1].y])
+    thumb_mcp = np.array([hand_landmarks.landmark[2].x, hand_landmarks.landmark[2].y])
+    thumb_distance = np.linalg.norm(thumb_cmc - thumb_mcp)
 
-    ring_retracted = np.linalg.norm(ring_tip - ring_mcp) < np.linalg.norm(index_tip - index_mcp)
-    pinky_retracted = np.linalg.norm(pinky_tip - pinky_mcp) < np.linalg.norm(middle_tip - middle_mcp)
+    pips_close = pip_distance < thumb_distance
 
-    if fingers_close and fingers_crossed and index_extended and middle_extended and ring_retracted and pinky_retracted:
+    if fingers_crossed and pips_close:
         return True
     else:
         return False
-
-
         
 def Gesture_Navigation():
     #tutaj cos kiedys bedzie
