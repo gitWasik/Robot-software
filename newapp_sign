@@ -262,7 +262,8 @@ def Znak_L(hand_landmarks, hand_label):
 import numpy as np
 
 def Znak_R(hand_landmarks, hand_label):
- 
+    if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
+        return False
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
     index_pip = np.array([hand_landmarks.landmark[6].x, hand_landmarks.landmark[6].y])
@@ -286,6 +287,23 @@ def Znak_R(hand_landmarks, hand_label):
     else:
         return False
     
+def Znak_B(hand_landmarks, hand_label):
+    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
+    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
+    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y])
+    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y])
+    
+    index_middle_distance = np.linalg.norm(index_tip - middle_tip)
+    middle_ring_distance = np.linalg.norm(middle_tip - ring_tip)
+    ring_pinky_distance = np.linalg.norm(ring_tip - pinky_tip)
+    
+    avg_distance = (index_middle_distance + middle_ring_distance + ring_pinky_distance) / 3
+    
+    if index_middle_distance < avg_distance and middle_ring_distance < avg_distance and ring_pinky_distance < avg_distance:
+        return True
+    else:
+        return False
+
 def gesture_confirmation(gesture_label):
     global gesture_counts, frame_counter
 
@@ -297,7 +315,7 @@ def gesture_confirmation(gesture_label):
     frame_counter += 1
 
     if frame_counter == 15:
-        confirmed_gesture = max(gesture_counts, key=gesture_counts.get)
+        confirmed_gesture = max(gesture_counts, key=gesture_counts.get) #najczęściej ale co najmniej przez 5 klatek
         gesture_counts = {}
         frame_counter = 0
         return confirmed_gesture
@@ -344,12 +362,12 @@ def Capture_Video():
                         Znak_S: "S Sign",
                         Znak_F: "F Sign",
                         Znak_L: "L Sign",
-                        Znak_R: "R Sign"
+                        Znak_R: "R Sign",
+                        Znak_B: "B Sign"
                     }
                     time.sleep(0.03)
                     for gesture_func, gesture_label in gesture_functions.items():
                         if gesture_func(hand_landmarks, hand_label):
-                            cv2.putText(frame, gesture_label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
                             frame_counter += 1
                             if frame_counter == 15:
                                 hand_area_pixels = (x_max - x_min) * (y_max - y_min)
@@ -358,6 +376,7 @@ def Capture_Video():
                                 frame_counter = 0
                             
                             confirmed_gesture = gesture_confirmation(gesture_label)
+                            cv2.putText(frame, gesture_label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
                             #if confirmed_gesture:
                             #    gesture_navigation(confirmed_gesture)
                             #break
