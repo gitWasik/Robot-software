@@ -181,21 +181,12 @@ def Znak_S(hand_landmarks, hand_label):
         return False
     fingertip_ids = [4, 8, 12, 16, 20]  
     mcp_ids = [1, 5, 9, 13, 17]  
-
-
     wrist = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y])
     mcps = [np.array([hand_landmarks.landmark[id].x, hand_landmarks.landmark[id].y]) for id in mcp_ids]
 
-
     wrist_to_mcps_vectors = [mcp - wrist for mcp in mcps]
-
-
     fingertips = [np.array([hand_landmarks.landmark[id].x, hand_landmarks.landmark[id].y]) for id in fingertip_ids]
-
-    
     wrist_to_fingertips_vectors = [fingertip - wrist for fingertip in fingertips]
-
-    
     closed_signals = 0
     for fingertip_vector, mcp_vector in zip(wrist_to_fingertips_vectors, wrist_to_mcps_vectors):
         if np.linalg.norm(fingertip_vector) < np.linalg.norm(mcp_vector):
@@ -270,7 +261,6 @@ def Znak_R(hand_landmarks, hand_label):
     middle_pip = np.array([hand_landmarks.landmark[10].x, hand_landmarks.landmark[10].y])
 
     pip_distance = np.linalg.norm(index_pip - middle_pip)
-
     if hand_label == "Right":
         fingers_crossed = index_tip[0] > middle_tip[0]
     else:
@@ -293,16 +283,33 @@ def Znak_B(hand_landmarks, hand_label):
     ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y])
     pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y])
     
+    index_mcp = np.array([hand_landmarks.landmark[5].x, hand_landmarks.landmark[5].y])
+    middle_mcp = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y])
+    ring_mcp = np.array([hand_landmarks.landmark[13].x, hand_landmarks.landmark[13].y])
+    pinky_mcp = np.array([hand_landmarks.landmark[17].x, hand_landmarks.landmark[17].y])
+    
+    index_extended = index_tip[1] < index_mcp[1]
+    middle_extended = middle_tip[1] < middle_mcp[1]
+    ring_extended = ring_tip[1] < ring_mcp[1]
+    pinky_extended = pinky_tip[1] < pinky_mcp[1]
+    
     index_middle_distance = np.linalg.norm(index_tip - middle_tip)
     middle_ring_distance = np.linalg.norm(middle_tip - ring_tip)
     ring_pinky_distance = np.linalg.norm(ring_tip - pinky_tip)
     
     avg_distance = (index_middle_distance + middle_ring_distance + ring_pinky_distance) / 3
     
-    if index_middle_distance < avg_distance and middle_ring_distance < avg_distance and ring_pinky_distance < avg_distance:
+    fingers_close = (
+        index_middle_distance < avg_distance and
+        middle_ring_distance < avg_distance and
+        ring_pinky_distance < avg_distance
+    )
+    
+    if index_extended and middle_extended and ring_extended and pinky_extended:
         return True
     else:
         return False
+
 
 def gesture_confirmation(gesture_label):
     global gesture_counts, frame_counter
