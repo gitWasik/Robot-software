@@ -322,12 +322,22 @@ def gesture_confirmation(gesture_label):
     frame_counter += 1
 
     if frame_counter == 15:
-        confirmed_gesture = max(gesture_counts, key=gesture_counts.get) #najczęściej ale co najmniej przez 5 klatek
+        confirmed_gesture = None
+        max_count = 0
+        for gesture, count in gesture_counts.items():
+            if count > max_count and count >= 5:
+                confirmed_gesture = gesture
+                max_count = count
+
         gesture_counts = {}
         frame_counter = 0
-        return confirmed_gesture
+
+        if confirmed_gesture:
+            print("Confirmed gesture:", confirmed_gesture)
+            return confirmed_gesture
 
     return None
+
 
         
 def Gesture_Navigation():
@@ -504,7 +514,7 @@ if __name__ == "__main__":
     frame_label.pack(side=tk.RIGHT)
     black_image()
 
-    hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
+    hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 15"))
     hand_area_label.pack(side=tk.BOTTOM)
 
     console_text = tk.Text(root, height=10, width=50)
