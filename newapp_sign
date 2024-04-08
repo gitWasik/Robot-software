@@ -19,6 +19,8 @@ hands = None
 cam = None
 gesture_counts = {}
 frame_counter = 0
+confirmed_gesture = None
+last_confirmed_gesture = None
 
 PWMA = None
 PWMB = None
@@ -311,7 +313,7 @@ def Znak_B(hand_landmarks, hand_label):
         return False
 
 
-def gesture_confirmation(gesture_label):
+def Gesture_Confirmation(gesture_label):
     global gesture_counts, frame_counter
 
     if gesture_label not in gesture_counts:
@@ -340,10 +342,31 @@ def gesture_confirmation(gesture_label):
 
 
         
-def Gesture_Navigation():
-    #tutaj cos kiedys bedzie
-    print("Gesture navigation mode :)")
-    
+def Gesture_Navigation(confirmed_gesture):
+    global webcam_running, last_confirmed_gesture
+
+    gesture_commands = {
+        "F Sign": forward,
+        "B Sign": backward,
+        "L Sign": left,
+        "R Sign": right,
+        "S Sign": stop
+    }
+
+    if confirmed_gesture:
+        last_confirmed_gesture = confirmed_gesture
+
+    if last_confirmed_gesture in gesture_commands:
+        gesture_commands[last_confirmed_gesture]()
+        print(f"Executing command: {last_confirmed_gesture}")
+    else:
+        stop()
+        print("Stopping the robot")
+
+    if not webcam_running:
+        stop()
+
+
 #=======================================================================================================
 #APP
 
@@ -392,11 +415,12 @@ def Capture_Video():
                                 hand_area_label.config(text=f"Hand area: {hand_area} UNITS")
                                 frame_counter = 0
                             
-                            confirmed_gesture = gesture_confirmation(gesture_label)
+                            confirmed_gesture = Gesture_Confirmation(gesture_label)
                             cv2.putText(frame, gesture_label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-                            #if confirmed_gesture:
-                            #    gesture_navigation(confirmed_gesture)
-                            #break
+                            if confirmed_gesture:
+                                Gesture_Navigation(confirmed_gesture)
+                                confirmed_gesture = None
+                            break
 
             cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(cv2image)
