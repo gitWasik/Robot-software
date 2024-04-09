@@ -353,19 +353,32 @@ def Gesture_Navigation(confirmed_gesture):
         "S Sign": stop
     }
 
-    if confirmed_gesture:
-        last_confirmed_gesture = confirmed_gesture
+    gesture_transitions = {
+        ("F Sign", "L Sign"): (stop, 0.5, left),
+        ("F Sign", "R Sign"): (stop, 0.5, right),
+        ("B Sign", "L Sign"): (stop, 0.5, left),
+        ("B Sign", "R Sign"): (stop, 0.5, right),
+        ("L Sign", "R Sign"): (stop, 0.5, right),
+        ("R Sign", "L Sign"): (stop, 0.5, left)
+    }
 
-    if last_confirmed_gesture in gesture_commands:
-        gesture_commands[last_confirmed_gesture]()
-        print(f"Executing command: {last_confirmed_gesture}")
+    if confirmed_gesture:
+        transition = (last_confirmed_gesture, confirmed_gesture)
+        if transition in gesture_transitions:
+            stop_func, delay, next_func = gesture_transitions[transition]
+            stop_func()
+            time.sleep(delay)
+            next_func()
+        else:
+            gesture_commands[confirmed_gesture]()
+        last_confirmed_gesture = confirmed_gesture
+        print(f"Executing command: {confirmed_gesture}")
     else:
         stop()
         print("Stopping the robot")
 
     if not webcam_running:
         stop()
-
 
 #=======================================================================================================
 #APP
