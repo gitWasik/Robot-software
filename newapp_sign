@@ -21,6 +21,8 @@ gesture_counts = {}
 frame_counter = 0
 confirmed_gesture = None
 last_confirmed_gesture = None
+gesture_navigation_running = False
+
 
 PWMA = None
 PWMB = None
@@ -52,8 +54,8 @@ def setup_GPIO():
     PWMB.start(PB)
 
 def stop():
-    
-    global PWMA, PWMB
+    global PWMA, PWMB, continuous_movement
+    continuous_movement = False
     if PWMA is not None and PWMB is not None:
         PWMA.ChangeDutyCycle(0)
         PWMB.ChangeDutyCycle(0)
@@ -65,25 +67,40 @@ def stop():
 
 
 
+
 def forward():
+    global PWMA, PWMB, continuous_movement
+    continuous_movement = True
     
-    global PWMA, PWMB
-    PWMA.ChangeDutyCycle(PA)
-    PWMB.ChangeDutyCycle(PB)
-    GPIO.output(IN1, GPIO.HIGH)
-    GPIO.output(IN2, GPIO.LOW)
-    GPIO.output(IN3, GPIO.HIGH)
-    GPIO.output(IN4, GPIO.LOW)
+    def continuous_forward():
+        while continuous_movement:
+            GPIO.output(IN1, GPIO.HIGH)
+            GPIO.output(IN2, GPIO.LOW)
+            GPIO.output(IN3, GPIO.HIGH)
+            GPIO.output(IN4, GPIO.LOW)
+            PWMA.ChangeDutyCycle(PA)
+            PWMB.ChangeDutyCycle(PB)
+            time.sleep(0.03)  
+    
+    threading.Thread(target=continuous_forward).start()
+
 
 def backward():
+    global PWMA, PWMB, continuous_movement
+    continuous_movement = True
     
-    global PWMA, PWMB
-    PWMA.ChangeDutyCycle(PA)
-    PWMB.ChangeDutyCycle(PB)
-    GPIO.output(IN1, GPIO.LOW)
-    GPIO.output(IN2, GPIO.HIGH)
-    GPIO.output(IN3, GPIO.LOW)
-    GPIO.output(IN4, GPIO.HIGH)
+    def continuous_backward():
+        while continuous_movement:
+            GPIO.output(IN1, GPIO.LOW)
+            GPIO.output(IN2, GPIO.HIGH)
+            GPIO.output(IN3, GPIO.LOW)
+            GPIO.output(IN4, GPIO.HIGH)
+            PWMA.ChangeDutyCycle(PA)
+            PWMB.ChangeDutyCycle(PB)
+            time.sleep(0.03)  
+    
+    threading.Thread(target=continuous_backward).start()
+
 
 def left():
     global PWMA, PWMB
@@ -342,12 +359,18 @@ def Gesture_Confirmation(gesture_label):
             return confirmed_gesture
 
     return None
-
-
-        
+    
+def start_gesture_navigation():
+    global gesture_navigation_running
+    gesture_navigation_running = True
+    print("Gesture navigation started")
+    
 def Gesture_Navigation(confirmed_gesture):
-    global webcam_running, last_confirmed_gesture
+    global webcam_running, last_confirmed_gesture, continuous_movement, gesture_navigation_running
 
+    if not gesture_navigation_running:
+        return
+    
     gesture_commands = {
         "F Sign": forward,
         "B Sign": backward,
@@ -366,21 +389,28 @@ def Gesture_Navigation(confirmed_gesture):
     }
 
     if confirmed_gesture:
-        transition = (last_confirmed_gesture, confirmed_gesture)
-        if transition in gesture_transitions:
-            stop_func, delay, next_func = gesture_transitions[transition]
-            stop_func()
-            time.sleep(delay)
-            next_func()
+        if (confirmed_gesture == "F Sign" and last_confirmed_gesture == "F Sign") or \
+           (confirmed_gesture == "B Sign" and last_confirmed_gesture == "B Sign"):
+            pass
         else:
-            gesture_commands[confirmed_gesture]()
+            continuous_movement = False
+            transition = (last_confirmed_gesture, confirmed_gesture)
+            if transition in gesture_transitions:
+                stop_func, delay, next_func = gesture_transitions[transition]
+                stop_func()
+                time.sleep(delay)
+                next_func()
+            else:
+                gesture_commands[confirmed_gesture]()
         last_confirmed_gesture = confirmed_gesture
         print(f"Executing command: {confirmed_gesture}")
     else:
+        continuous_movement = False
         stop()
         print("Stopping the robot")
 
     if not webcam_running:
+        continuous_movement = False
         stop()
 
 #=======================================================================================================
@@ -483,11 +513,13 @@ def black_image():
     frame_label.image = black_image_tk
 
 def stop_webcam():
-    global webcam_running
+    global webcam_running, gesture_navigation_running
     if webcam_running:
         webcam_running = False
+        gesture_navigation_running = False
         start_button.config(state=tk.NORMAL)
         stop_button.config(state=tk.DISABLED)
+
 
 def quit_app():
     global webcam_running, webcam_thread, cam, hands
@@ -584,6 +616,10 @@ if __name__ == "__main__":
 
     stop_button = ttk.Button(root, text="STOP", command=stop_webcam, state=tk.DISABLED)
     stop_button.pack(side=tk.LEFT, padx=10, pady=10)
+    
+    gesture_navigation_button = ttk.Button(root, text="START GESTURE NAVIGATION", command=start_gesture_navigation)
+    gesture_navigation_button.pack(side=tk.LEFT, padx=10, pady=10)
+
 
     quit_button = ttk.Button(root, text="QUIT", command=quit_app)
     quit_button.pack(side=tk.LEFT, padx=10, pady=10)
