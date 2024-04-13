@@ -64,10 +64,6 @@ def stop():
         GPIO.output(IN3, GPIO.LOW)
         GPIO.output(IN4, GPIO.LOW)
 
-
-
-
-
 def forward():
     global PWMA, PWMB, continuous_movement
     continuous_movement = True
@@ -84,7 +80,6 @@ def forward():
     
     threading.Thread(target=continuous_forward).start()
 
-
 def backward():
     global PWMA, PWMB, continuous_movement
     continuous_movement = True
@@ -100,7 +95,6 @@ def backward():
             time.sleep(0.03)  
     
     threading.Thread(target=continuous_backward).start()
-
 
 def left():
     global PWMA, PWMB
@@ -577,7 +571,6 @@ if __name__ == "__main__":
     
     setup_GPIO()
     stop()
-    
        
     root = tk.Tk()
     root.title("Raspberry Pi Robot")
@@ -619,7 +612,6 @@ if __name__ == "__main__":
     
     gesture_navigation_button = ttk.Button(root, text="START GESTURE NAVIGATION", command=start_gesture_navigation)
     gesture_navigation_button.pack(side=tk.LEFT, padx=10, pady=10)
-
 
     quit_button = ttk.Button(root, text="QUIT", command=quit_app)
     quit_button.pack(side=tk.LEFT, padx=10, pady=10)
