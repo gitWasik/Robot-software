@@ -454,6 +454,7 @@ def Capture_Video():
                                 frame_counter = 0
                             
                             confirmed_gesture = Gesture_Confirmation(gesture_label)
+                            cv2.putText(image, gesture_label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
                             if confirmed_gesture:
                                 Gesture_Navigation(confirmed_gesture)
                                 confirmed_gesture = None
@@ -513,6 +514,7 @@ def stop_webcam():
 def quit_app():
     global webcam_running, picam2, webcam_thread, hands
     webcam_running = False
+    gesture_navigation_running = False
     if picam2:
         picam2.close()
         
@@ -530,37 +532,40 @@ def textbox_messenger(text_widget):
     sys.stdout.write = write
     sys.stderr.write = write
 
-
 def forward_button_command(event):
-    #forward()
+    forward()
     print("Forward button pressed")
     root.after(5000, stop)
 
 def forward_button_released(event):
-    #stop()
+    stop()
     print("Forward button released")
     
-def backward_button_command():
-    #backward()
+def backward_button_command(event):
+    backward()
     print("Backward button pressed")
+    root.after(5000, stop)
+    
+def backward_button_released(event):
+    stop()
+    print("Backward button released")
     
 def left_button_command():
-    #left()
+    left()
     print("Left button pressed")
     
 def right_button_command():
-    #right()
+    right()
     print("Right button pressed")
 
 def stop_moving():
-    #stop()
+    stop()
     print("Stop moving button pressed")
     
 if __name__ == "__main__":
     
     setup_GPIO()
     stop()
-    
        
     root = tk.Tk()
     root.title("Raspberry Pi Robot")
@@ -600,14 +605,11 @@ if __name__ == "__main__":
     gesture_navigation_button = ttk.Button(root, text="START GESTURE NAVIGATION", command=start_gesture_navigation)
     gesture_navigation_button.pack(side=tk.LEFT, padx=10, pady=10)
 
-
     stop_button = ttk.Button(root, text="STOP", command=stop_webcam, state=tk.DISABLED)
     stop_button.pack(side=tk.LEFT, padx=10, pady=10)
 
     quit_button = ttk.Button(root, text="QUIT", command=quit_app)
     quit_button.pack(side=tk.LEFT, padx=10, pady=10)
-    
-    
     
     textbox_messenger(console_text)
 
