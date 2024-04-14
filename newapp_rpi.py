@@ -187,6 +187,8 @@ def Hand_Orientation(hand_landmarks, hand_label):
         
 
 def Znak_S(hand_landmarks, hand_label):
+    if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
+        return False
     if Znak_R(hand_landmarks,hand_label):
         return False
     if Znak_F(hand_landmarks, hand_label):
@@ -214,7 +216,8 @@ def Znak_S(hand_landmarks, hand_label):
 
 
 def Znak_F(hand_landmarks, hand_label):
-    
+    if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
+        return False
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
@@ -239,6 +242,8 @@ def Znak_F(hand_landmarks, hand_label):
         return False
 
 def Znak_L(hand_landmarks, hand_label):
+    if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
+        return False
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
@@ -265,6 +270,8 @@ def Znak_L(hand_landmarks, hand_label):
         return False
 
 def Znak_B(hand_landmarks, hand_label):
+    if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
+        return False
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
     ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y])
@@ -304,7 +311,8 @@ def Znak_B(hand_landmarks, hand_label):
 import numpy as np
 
 def Znak_R(hand_landmarks, hand_label):
-    
+    if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
+        return False
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
     index_pip = np.array([hand_landmarks.landmark[6].x, hand_landmarks.landmark[6].y])
@@ -356,9 +364,16 @@ def Gesture_Confirmation(gesture_label):
     return None
         
 def start_gesture_navigation():
-    global gesture_navigation_running
+    global gesture_navigation_running, gesture_navigation_button
     gesture_navigation_running = True
     print("Gesture navigation started")
+    gesture_navigation_button.config(text="STOP GESTURE NAVIGATION", style="Active.TButton")
+    
+def stop_gesture_navigation():
+    global gesture_navigation_running, gesture_navigation_button
+    gesture_navigation_running = False
+    print("Gesture navigation stopped")
+    gesture_navigation_button.config(text="START GESTURE NAVIGATION", style="TButton")
     
 def Gesture_Navigation(confirmed_gesture):
     global webcam_running, last_confirmed_gesture, continuous_movement, gesture_navigation_running
@@ -503,13 +518,13 @@ def black_image():
     frame_label.image = black_image_tk
 
 def stop_webcam():
-    global webcam_running
+    global webcam_running, gesture_navigation_running
     if webcam_running:
         webcam_running = False
         gesture_navigation_running = False
         start_button.config(state=tk.NORMAL)
         stop_button.config(state=tk.DISABLED)
-       
+        root.after(100, black_image)  
 
 def quit_app():
     global webcam_running, picam2, webcam_thread, hands
@@ -573,8 +588,12 @@ if __name__ == "__main__":
     frame_label = tk.Label(root)   
     frame_label.pack(side=tk.RIGHT)
     black_image()
+    
+    style = ttk.Style()
+    style.configure("TButton", background=root.cget("bg")) 
+    style.configure("Active.TButton", background="green") 
 
-    hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 20"))
+    hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 15"))
     hand_area_label.pack(side=tk.BOTTOM)
 
     console_text = tk.Text(root, height=10, width=50)
@@ -601,16 +620,17 @@ if __name__ == "__main__":
 
     start_button = ttk.Button(root, text="START WEBCAM", command=start_webcam)
     start_button.pack(side=tk.LEFT, padx=10, pady=10)
-    
-    gesture_navigation_button = ttk.Button(root, text="START GESTURE NAVIGATION", command=start_gesture_navigation)
-    gesture_navigation_button.pack(side=tk.LEFT, padx=10, pady=10)
 
     stop_button = ttk.Button(root, text="STOP", command=stop_webcam, state=tk.DISABLED)
     stop_button.pack(side=tk.LEFT, padx=10, pady=10)
+    
+    gesture_navigation_button = ttk.Button(root, text="START GESTURE NAVIGATION", 
+                                command=lambda: start_gesture_navigation() if not gesture_navigation_running else stop_gesture_navigation())
+    gesture_navigation_button.pack(side=tk.LEFT, padx=10, pady=10)
 
     quit_button = ttk.Button(root, text="QUIT", command=quit_app)
     quit_button.pack(side=tk.LEFT, padx=10, pady=10)
-    
+      
     textbox_messenger(console_text)
 
     root.mainloop()
