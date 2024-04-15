@@ -586,51 +586,54 @@ if __name__ == "__main__":
     root.title("Raspberry Pi Robot")
 
     frame_label = tk.Label(root)   
-    frame_label.pack(side=tk.RIGHT)
+    frame_label.grid(row=0, column=0, rowspan=6, padx=10, pady=10)
     black_image()
     
     style = ttk.Style()
     style.configure("TButton", background=root.cget("bg")) 
     style.configure("Active.TButton", background="green") 
 
-    hand_area_label = tk.Label(root, text="Hand area: 0",font=("Arial, 15"))
-    hand_area_label.pack(side=tk.BOTTOM)
+    hand_area_label = tk.Label(root, text="Hand area: 0", font=("Arial", 15))
+    hand_area_label.grid(row=6, column=0, padx=10, pady=10)
 
     console_text = tk.Text(root, height=10, width=50)
-    console_text.pack(anchor=tk.SW,padx=10, pady=10)
+    console_text.grid(row=7, column=0, columnspan=2, padx=10, pady=10)
 
-    forward_button = ttk.Button(root, text="FORWARD")
-    forward_button.pack(side=tk.TOP, padx=10, pady=10)
+    movement_frame = ttk.Frame(root)
+    movement_frame.grid(row=6, column=0, padx=10, pady=5)
+
+    forward_button = ttk.Button(movement_frame, text="FORWARD")
+    forward_button.grid(row=0, column=1, padx=5, pady=5)
     forward_button.bind("<ButtonPress-1>", forward_button_command)
     forward_button.bind("<ButtonRelease-1>", forward_button_released)
 
-    backward_button = ttk.Button(root, text="BACKWARD")
-    backward_button.pack(side=tk.TOP, padx=10, pady=10)
+    left_button = ttk.Button(movement_frame, text="LEFT", command=left_button_command)
+    left_button.grid(row=1, column=0, padx=5, pady=5)
+
+    stop_moving_button = ttk.Button(movement_frame, text="STOP MOVING", command=stop_moving)
+    stop_moving_button.grid(row=1, column=1, padx=5, pady=5)
+
+    right_button = ttk.Button(movement_frame, text="RIGHT", command=right_button_command)
+    right_button.grid(row=1, column=2, padx=5, pady=5)
+
+    backward_button = ttk.Button(movement_frame, text="BACKWARD")
+    backward_button.grid(row=2, column=1, padx=5, pady=5)
     backward_button.bind("<ButtonPress-1>", backward_button_command)
-    backward_button.bind("<ButtonRelease-1>",)
-
-    left_button = ttk.Button(root, text="LEFT",command=left_button_command)
-    left_button.pack(side=tk.TOP, padx=10, pady=10)
-
-    right_button = ttk.Button(root, text="RIGHT",command=right_button_command)
-    right_button.pack(side=tk.TOP, padx=10, pady=10)
-    
-    stop_moving_button = ttk.Button(root, text="STOP MOVING",command=stop_moving)
-    stop_moving_button.pack(side=tk.TOP, padx=10, pady=10)
+    backward_button.bind("<ButtonRelease-1>", backward_button_released)
 
     start_button = ttk.Button(root, text="START WEBCAM", command=start_webcam)
-    start_button.pack(side=tk.LEFT, padx=10, pady=10)
+    start_button.grid(row=0, column=1, padx=10, pady=(10, 2))
 
     stop_button = ttk.Button(root, text="STOP", command=stop_webcam, state=tk.DISABLED)
-    stop_button.pack(side=tk.LEFT, padx=10, pady=10)
-    
+    stop_button.grid(row=1, column=1, padx=10, pady=2)
+
     gesture_navigation_button = ttk.Button(root, text="START GESTURE NAVIGATION", 
-                                command=lambda: start_gesture_navigation() if not gesture_navigation_running else stop_gesture_navigation())
-    gesture_navigation_button.pack(side=tk.LEFT, padx=10, pady=10)
+                            command=lambda: start_gesture_navigation() if not gesture_navigation_running else stop_gesture_navigation())
+    gesture_navigation_button.grid(row=2, column=1, padx=10, pady=(2, 10))
 
     quit_button = ttk.Button(root, text="QUIT", command=quit_app)
-    quit_button.pack(side=tk.LEFT, padx=10, pady=10)
-      
+    quit_button.grid(row=3, column=1, padx=10, pady=(0, 10))
+    
     textbox_messenger(console_text)
 
     root.mainloop()
