@@ -9,6 +9,7 @@ import time
 #import RPi.GPIO as GPIO
 import Mock.GPIO as GPIO
 import sys
+import urllib.request
 
 webcam_thread = None
 webcam_running = False
@@ -22,7 +23,6 @@ frame_counter = 0
 confirmed_gesture = None
 last_confirmed_gesture = None
 gesture_navigation_running = False
-
 
 PWMA = None
 PWMB = None
@@ -186,8 +186,8 @@ def Hand_Orientation(hand_landmarks, hand_label):
         
 
 def Znak_S(hand_landmarks, hand_label):
-    if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
-        return False
+    #if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
+    #    return False
     if Znak_R(hand_landmarks,hand_label):
         return False
     if Znak_F(hand_landmarks, hand_label):
@@ -212,7 +212,6 @@ def Znak_S(hand_landmarks, hand_label):
         return True
     else:
         return False
-
 
 def Znak_F(hand_landmarks, hand_label):
     if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
@@ -310,8 +309,8 @@ def Znak_B(hand_landmarks, hand_label):
 import numpy as np
 
 def Znak_R(hand_landmarks, hand_label):
-    if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
-        return False
+    #if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
+     #   return False
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
     index_pip = np.array([hand_landmarks.landmark[6].x, hand_landmarks.landmark[6].y])
@@ -373,8 +372,6 @@ def stop_gesture_navigation():
     gesture_navigation_running = False
     print("Gesture navigation stopped")
     gesture_navigation_button.config(text="START GESTURE NAVIGATION", style="TButton")
-
-
     
 def Gesture_Navigation(confirmed_gesture):
     global webcam_running, last_confirmed_gesture, continuous_movement, gesture_navigation_running
@@ -426,7 +423,6 @@ def Gesture_Navigation(confirmed_gesture):
 
 #=======================================================================================================
 #APP
-
 def Capture_Video():
     global webcam_running, frame_label, cam
     frame_counter = 0
@@ -435,7 +431,7 @@ def Capture_Video():
     try:
         while webcam_running:
             if not cam.isOpened():
-                cam.open(0)
+                #cam.open(0)
                 raise IOError("webcam not opened")
             ret, frame = cam.read()
             if not ret:
@@ -494,9 +490,6 @@ def Capture_Video():
             hands.close()
         cv2.destroyAllWindows()
 
-
-
-
 def start_webcam():
     global webcam_thread, webcam_running, hands, cam
     if not webcam_running:
@@ -511,7 +504,7 @@ def start_webcam():
         webcam_thread.start()
         start_button.config(state=tk.DISABLED)
         stop_button.config(state=tk.NORMAL)
-
+     
 def black_image():
     global frame_label
     width, height = 640, 480
