@@ -146,48 +146,44 @@ def setMotor(left, right):
 #GESTY 
 
 def Hand_Orientation(hand_landmarks, hand_label):
+    palm_center = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
+    wrist = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
+    
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y, hand_landmarks.landmark[12].z])
+    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y, hand_landmarks.landmark[16].z])
     pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y, hand_landmarks.landmark[20].z])
     
     index_base = np.array([hand_landmarks.landmark[5].x, hand_landmarks.landmark[5].y, hand_landmarks.landmark[5].z])
     middle_base = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y, hand_landmarks.landmark[9].z])
+    ring_base = np.array([hand_landmarks.landmark[13].x, hand_landmarks.landmark[13].y, hand_landmarks.landmark[13].z])
     pinky_base = np.array([hand_landmarks.landmark[17].x, hand_landmarks.landmark[17].y, hand_landmarks.landmark[17].z])
+    
     index_knuckle = np.array([hand_landmarks.landmark[6].x, hand_landmarks.landmark[6].y, hand_landmarks.landmark[6].z])
     middle_knuckle = np.array([hand_landmarks.landmark[10].x, hand_landmarks.landmark[10].y, hand_landmarks.landmark[10].z])
-    pinky_knuckle = np.array([hand_landmarks.landmark[14].x, hand_landmarks.landmark[14].y, hand_landmarks.landmark[14].z])
+    ring_knuckle = np.array([hand_landmarks.landmark[14].x, hand_landmarks.landmark[14].y, hand_landmarks.landmark[14].z])
+    pinky_knuckle = np.array([hand_landmarks.landmark[18].x, hand_landmarks.landmark[18].y, hand_landmarks.landmark[18].z])
     
-    thumb_to_index_base = index_base - thumb_tip
-    thumb_to_middle_base = middle_base - thumb_tip
-    thumb_to_pinky_base = pinky_base - thumb_tip
-    thumb_to_index_knuckle = index_knuckle - thumb_tip
-    thumb_to_middle_knuckle = middle_knuckle - thumb_tip
-    thumb_to_pinky_knuckle = pinky_knuckle - thumb_tip
+    cross_products = [
+        np.cross(index_base - thumb_tip, pinky_base - thumb_tip),
+        np.cross(middle_base - thumb_tip, pinky_base - thumb_tip),
+        np.cross(ring_base - thumb_tip, pinky_base - thumb_tip),
+        np.cross(index_knuckle - thumb_tip, pinky_knuckle - thumb_tip),
+        np.cross(middle_knuckle - thumb_tip, pinky_knuckle - thumb_tip),
+        np.cross(ring_knuckle - thumb_tip, pinky_knuckle - thumb_tip)
+    ]
     
-    cross_index_base = np.cross(thumb_to_index_base, thumb_to_pinky_base)
-    cross_middle_base = np.cross(thumb_to_middle_base, thumb_to_pinky_base)
-    cross_index_knuckle = np.cross(thumb_to_index_knuckle, thumb_to_pinky_knuckle)
-    cross_middle_knuckle = np.cross(thumb_to_middle_knuckle, thumb_to_pinky_knuckle)
-    
-    avg_z_base = (cross_index_base[2] + cross_middle_base[2]) / 2
-    avg_z_knuckle = (cross_index_knuckle[2] + cross_middle_knuckle[2]) / 2
-    
+    avg_z = sum(cp[2] for cp in cross_products) / len(cross_products)
+
     if hand_label == "Right":
-        if avg_z_base > 0 and avg_z_knuckle > 0:
-            return "Inside"
-        else:
-            return "Outside"
+        return "Inside" if avg_z > 0 else "Outside"
     else:
-        if avg_z_base < 0 and avg_z_knuckle < 0:
-            return "Inside"
-        else:
-            return "Outside"
-        
+        return "Inside" if avg_z < 0 else "Outside"
 
 def Znak_S(hand_landmarks, hand_label):
-    #if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
-    #    return False
+    if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
+        return False
     if Znak_R(hand_landmarks,hand_label):
         return False
     if Znak_F(hand_landmarks, hand_label):
@@ -266,26 +262,39 @@ def Znak_L(hand_landmarks, hand_label):
         return True
     else:
         return False
+    
 def Znak_B(hand_landmarks, hand_label):
-    fingertips = [np.array([hand_landmarks.landmark[i].x, hand_landmarks.landmark[i].y]) for i in [8, 12, 16, 20]]
-    pips = [np.array([hand_landmarks.landmark[i].x, hand_landmarks.landmark[i].y]) for i in [6, 10, 14, 18]]
-    
-    vectors = [fingertips[i+1] - fingertips[i] for i in range(3)]
-    cross_products = [np.cross(vectors[i], vectors[i+1]) for i in range(2)]
-    parallel = all(np.abs(cp) < 0.01 for cp in cross_products)  # Threshold for parallelism, adjust based on testing
-    fingers_extended = all(fingertips[i][1] < pips[i][1] for i in range(4))
- 
-    distances = [np.linalg.norm(vectors[i]) for i in range(3)]
-    fingers_close = all(d < 0.05 for d in distances)  # Adjust threshold based on empirical data
-    
-    if fingers_extended and parallel and fingers_close:
+    if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
+        return False
+    fingertip_ids = [8, 12, 16, 20]
+    mcp_ids = [5, 9, 13, 17]
+    extended_fingers = 0
+    for tip_id, mcp_id in zip(fingertip_ids, mcp_ids):
+        tip = np.array([hand_landmarks.landmark[tip_id].x, hand_landmarks.landmark[tip_id].y])
+        mcp = np.array([hand_landmarks.landmark[mcp_id].x, hand_landmarks.landmark[mcp_id].y])
+        if tip[1] < mcp[1]:
+            extended_fingers += 1
+
+    if extended_fingers < 4:
+        return False
+
+    finger_distances = []
+    for i in range(len(fingertip_ids) - 1):
+        tip1 = np.array([hand_landmarks.landmark[fingertip_ids[i]].x, hand_landmarks.landmark[fingertip_ids[i]].y])
+        tip2 = np.array([hand_landmarks.landmark[fingertip_ids[i+1]].x, hand_landmarks.landmark[fingertip_ids[i+1]].y])
+        distance = np.linalg.norm(tip1 - tip2)
+        finger_distances.append(distance)
+
+    avg_distance = sum(finger_distances) / len(finger_distances)
+    proximity_threshold = 0.08 
+    if avg_distance < proximity_threshold:
         return True
     else:
         return False
 
 def Znak_R(hand_landmarks, hand_label):
-    #if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
-    #    return False
+    if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
+        return False
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
     index_pip = np.array([hand_landmarks.landmark[6].x, hand_landmarks.landmark[6].y])
