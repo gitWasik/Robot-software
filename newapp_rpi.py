@@ -145,46 +145,66 @@ def setMotor(left, right):
 
 #========================================================================================================================
 #GESTY
-        
+def Hand_Open(hand_landmarks,hand_label):
+    fingertip_ids = [4, 8, 12, 16, 20]
+    wrist_id = 0 
+    palm_base_id = 9
+    wrist = np.array([hand_landmarks.landmark[wrist_id].x, hand_landmarks.landmark[wrist_id].y])
+    palm_base = np.array([hand_landmarks.landmark[palm_base_id].x, hand_landmarks.landmark[palm_base_id].y])
+    wrist_to_palm_base = np.linalg.norm(wrist - palm_base)
+
+    open_hand_signals = 0
+    closed_hand_signals = 0
+    for fingertip_id in fingertip_ids:
+        fingertip = np.array([hand_landmarks.landmark[fingertip_id].x, hand_landmarks.landmark[fingertip_id].y])
+        wrist_to_fingertip = np.linalg.norm(wrist - fingertip)
+        ratio = wrist_to_fingertip / wrist_to_palm_base
+        if ratio > 0.8:
+            open_hand_signals += 1
+        elif ratio < 0.5: 
+            closed_hand_signals += 1
+
+    if open_hand_signals == 5:
+        return "Open"
+    elif closed_hand_signals <= 4: 
+        return "Closed"
+    else:
+        return "Neither"        
 def Hand_Orientation(hand_landmarks, hand_label):
+    palm_center = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
+    wrist = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
+    
     thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y, hand_landmarks.landmark[4].z])
     index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y, hand_landmarks.landmark[8].z])
     middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y, hand_landmarks.landmark[12].z])
+    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y, hand_landmarks.landmark[16].z])
     pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y, hand_landmarks.landmark[20].z])
     
     index_base = np.array([hand_landmarks.landmark[5].x, hand_landmarks.landmark[5].y, hand_landmarks.landmark[5].z])
     middle_base = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y, hand_landmarks.landmark[9].z])
+    ring_base = np.array([hand_landmarks.landmark[13].x, hand_landmarks.landmark[13].y, hand_landmarks.landmark[13].z])
     pinky_base = np.array([hand_landmarks.landmark[17].x, hand_landmarks.landmark[17].y, hand_landmarks.landmark[17].z])
+    
     index_knuckle = np.array([hand_landmarks.landmark[6].x, hand_landmarks.landmark[6].y, hand_landmarks.landmark[6].z])
     middle_knuckle = np.array([hand_landmarks.landmark[10].x, hand_landmarks.landmark[10].y, hand_landmarks.landmark[10].z])
-    pinky_knuckle = np.array([hand_landmarks.landmark[14].x, hand_landmarks.landmark[14].y, hand_landmarks.landmark[14].z])
+    ring_knuckle = np.array([hand_landmarks.landmark[14].x, hand_landmarks.landmark[14].y, hand_landmarks.landmark[14].z])
+    pinky_knuckle = np.array([hand_landmarks.landmark[18].x, hand_landmarks.landmark[18].y, hand_landmarks.landmark[18].z])
     
-    thumb_to_index_base = index_base - thumb_tip
-    thumb_to_middle_base = middle_base - thumb_tip
-    thumb_to_pinky_base = pinky_base - thumb_tip
-    thumb_to_index_knuckle = index_knuckle - thumb_tip
-    thumb_to_middle_knuckle = middle_knuckle - thumb_tip
-    thumb_to_pinky_knuckle = pinky_knuckle - thumb_tip
+    cross_products = [
+        np.cross(index_base - thumb_tip, pinky_base - thumb_tip),
+        np.cross(middle_base - thumb_tip, pinky_base - thumb_tip),
+        np.cross(ring_base - thumb_tip, pinky_base - thumb_tip),
+        np.cross(index_knuckle - thumb_tip, pinky_knuckle - thumb_tip),
+        np.cross(middle_knuckle - thumb_tip, pinky_knuckle - thumb_tip),
+        np.cross(ring_knuckle - thumb_tip, pinky_knuckle - thumb_tip)
+    ]
     
-    cross_index_base = np.cross(thumb_to_index_base, thumb_to_pinky_base)
-    cross_middle_base = np.cross(thumb_to_middle_base, thumb_to_pinky_base)
-    cross_index_knuckle = np.cross(thumb_to_index_knuckle, thumb_to_pinky_knuckle)
-    cross_middle_knuckle = np.cross(thumb_to_middle_knuckle, thumb_to_pinky_knuckle)
-    
-    avg_z_base = (cross_index_base[2] + cross_middle_base[2]) / 2
-    avg_z_knuckle = (cross_index_knuckle[2] + cross_middle_knuckle[2]) / 2
-    
+    avg_z = sum(cp[2] for cp in cross_products) / len(cross_products)
+
     if hand_label == "Right":
-        if avg_z_base > 0 and avg_z_knuckle > 0:
-            return "Inside"
-        else:
-            return "Outside"
+        return "Inside" if avg_z > 0 else "Outside"
     else:
-        if avg_z_base < 0 and avg_z_knuckle < 0:
-            return "Inside"
-        else:
-            return "Outside"
-        
+        return "Inside" if avg_z < 0 else "Outside"
 
 def Znak_S(hand_landmarks, hand_label):
     if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
@@ -270,6 +290,8 @@ def Znak_L(hand_landmarks, hand_label):
         return False
 
 def Znak_B(hand_landmarks, hand_label):
+    if Hand_Open(hand_landmarks, hand_label) == "Open":
+        return False
     if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
         return False
     fingertip_ids = [8, 12, 16, 20]
@@ -467,11 +489,11 @@ def Capture_Video():
             cv2image = cv2.cvtColor(image, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
-            
-            time.sleep(0.03)
+        
             frame_label.imgtk = imgtk
             frame_label.configure(image=imgtk)
             frame_label.image = imgtk
+            time.sleep(0.03)
     finally:
         picam2.stop()
         hands.close()
@@ -485,11 +507,10 @@ def start_webcam():
         mp_hands = mp.solutions.hands
         hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.8, min_tracking_confidence=0.7)
         picam2 = Picamera2()
+        time.sleep(0.03)
         video_config = picam2.create_video_configuration(main={"size":(640,480)},controls={"FrameRate": 30.0})
         picam2.configure(video_config)
-        #time.sleep(0.03)
         picam2.start()
-        #time.sleep(0.03)
         webcam_thread = threading.Thread(target=Capture_Video)
         webcam_thread.start()
         start_button.config(state=tk.DISABLED)
