@@ -272,43 +272,32 @@ def Znak_L(hand_landmarks, hand_label):
 def Znak_B(hand_landmarks, hand_label):
     if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
         return False
-    index_tip = np.array([hand_landmarks.landmark[8].x, hand_landmarks.landmark[8].y])
-    middle_tip = np.array([hand_landmarks.landmark[12].x, hand_landmarks.landmark[12].y])
-    ring_tip = np.array([hand_landmarks.landmark[16].x, hand_landmarks.landmark[16].y])
-    pinky_tip = np.array([hand_landmarks.landmark[20].x, hand_landmarks.landmark[20].y])
-    
-    index_mcp = np.array([hand_landmarks.landmark[5].x, hand_landmarks.landmark[5].y])
-    middle_mcp = np.array([hand_landmarks.landmark[9].x, hand_landmarks.landmark[9].y])
-    ring_mcp = np.array([hand_landmarks.landmark[13].x, hand_landmarks.landmark[13].y])
-    pinky_mcp = np.array([hand_landmarks.landmark[17].x, hand_landmarks.landmark[17].y])
-    
-    thumb_tip = np.array([hand_landmarks.landmark[4].x, hand_landmarks.landmark[4].y])
-    thumb_mcp = np.array([hand_landmarks.landmark[2].x, hand_landmarks.landmark[2].y])
-    
-    index_extended = index_tip[1] < index_mcp[1]
-    middle_extended = middle_tip[1] < middle_mcp[1]
-    ring_extended = ring_tip[1] < ring_mcp[1]
-    pinky_extended = pinky_tip[1] < pinky_mcp[1]
-    thumb_not_extended = thumb_tip[1] > thumb_mcp[1]
-    
-    index_middle_distance = np.linalg.norm(index_tip - middle_tip)
-    middle_ring_distance = np.linalg.norm(middle_tip - ring_tip)
-    ring_pinky_distance = np.linalg.norm(ring_tip - pinky_tip)
-    
-    palm_width = np.linalg.norm(index_mcp - pinky_mcp)
-    
-    fingers_close = (
-        index_middle_distance < palm_width * 0.5 and
-        middle_ring_distance < palm_width * 0.5 and
-        ring_pinky_distance < palm_width * 0.5
-    )
-    
-    if index_extended and middle_extended and ring_extended and pinky_extended and thumb_not_extended and fingers_close:
+    fingertip_ids = [8, 12, 16, 20]
+    mcp_ids = [5, 9, 13, 17]
+    extended_fingers = 0
+    for tip_id, mcp_id in zip(fingertip_ids, mcp_ids):
+        tip = np.array([hand_landmarks.landmark[tip_id].x, hand_landmarks.landmark[tip_id].y])
+        mcp = np.array([hand_landmarks.landmark[mcp_id].x, hand_landmarks.landmark[mcp_id].y])
+        if tip[1] < mcp[1]:
+            extended_fingers += 1
+
+    if extended_fingers < 4:
+        return False
+
+    finger_distances = []
+    for i in range(len(fingertip_ids) - 1):
+        tip1 = np.array([hand_landmarks.landmark[fingertip_ids[i]].x, hand_landmarks.landmark[fingertip_ids[i]].y])
+        tip2 = np.array([hand_landmarks.landmark[fingertip_ids[i+1]].x, hand_landmarks.landmark[fingertip_ids[i+1]].y])
+        distance = np.linalg.norm(tip1 - tip2)
+        finger_distances.append(distance)
+
+    avg_distance = sum(finger_distances) / len(finger_distances)
+    proximity_threshold = 0.08 
+    if avg_distance < proximity_threshold:
         return True
     else:
         return False
 
-import numpy as np
 
 def Znak_R(hand_landmarks, hand_label):
     if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
@@ -498,9 +487,9 @@ def start_webcam():
         picam2 = Picamera2()
         video_config = picam2.create_video_configuration(main={"size":(640,480)},controls={"FrameRate": 30.0})
         picam2.configure(video_config)
-        time.sleep(0.03)
+        #time.sleep(0.03)
         picam2.start()
-        time.sleep(0.03)
+        #time.sleep(0.03)
         webcam_thread = threading.Thread(target=Capture_Video)
         webcam_thread.start()
         start_button.config(state=tk.DISABLED)
