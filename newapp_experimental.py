@@ -194,8 +194,8 @@ def left():
     GPIO.output(IN4, GPIO.LOW)
     set_servo_angle(90)  # Turn servo 90 degrees in the opposite direction
     time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
-    stop()
-    set_servo_angle(0)  # Reset servo to the original position
+    #stop()
+    #set_servo_angle(0)  # Reset servo to the original position
 
 def right():
     global PWMA, PWMB
@@ -207,8 +207,8 @@ def right():
     GPIO.output(IN4, GPIO.HIGH)
     set_servo_angle(-90)  # Turn servo 90 degrees in the opposite direction
     time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
-    stop()
-    set_servo_angle(0)  # Reset servo to the original position
+    #stop()
+    #set_servo_angle(0)  # Reset servo to the original position
 
 def setPWMA(value):
     global PA, PWMA
