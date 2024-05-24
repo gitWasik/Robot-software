@@ -120,7 +120,9 @@ def setup_servo():
     pwm.setPWMFreq(50)
 
 def set_servo_angle(angle):
-    pulse = angle * 4096 / 360 + 500
+    pulse_min = 500
+    pulse_max = 2500
+    pulse = pulse_min + (pulse_max - pulse_min) * angle / 180
     pwm.setServoPulse(0, int(pulse))
 
 #===================================================================================================
