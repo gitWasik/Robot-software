@@ -10,6 +10,8 @@ import time
 import Mock.GPIO as GPIO
 from picamera2 import Picamera2
 import sys
+import math
+import smbus
 
 webcam_thread = None
 webcam_running = False
@@ -36,6 +38,92 @@ ENB = 26
 PA = 20
 PB = 20
 
+#===================================================================================================
+#SERVO CONTROL
+
+class PCA9685:
+
+  # Registers/etc.
+  __SUBADR1            = 0x02
+  __SUBADR2            = 0x03
+  __SUBADR3            = 0x04
+  __MODE1              = 0x00
+  __PRESCALE           = 0xFE
+  __LED0_ON_L          = 0x06
+  __LED0_ON_H          = 0x07
+  __LED0_OFF_L         = 0x08
+  __LED0_OFF_H         = 0x09
+  __ALLLED_ON_L        = 0xFA
+  __ALLLED_ON_H        = 0xFB
+  __ALLLED_OFF_L       = 0xFC
+  __ALLLED_OFF_H       = 0xFD
+
+  def __init__(self, address=0x40, debug=False):
+    self.bus = smbus.SMBus(1)
+    self.address = address
+    self.debug = debug
+    if (self.debug):
+      print("Reseting PCA9685")
+    self.write(self.__MODE1, 0x00)
+	
+  def write(self, reg, value):
+    "Writes an 8-bit value to the specified register/address"
+    self.bus.write_byte_data(self.address, reg, value)
+    if (self.debug):
+      print("I2C: Write 0x%02X to register 0x%02X" % (value, reg))
+	  
+  def read(self, reg):
+    "Read an unsigned byte from the I2C device"
+    result = self.bus.read_byte_data(self.address, reg)
+    if (self.debug):
+      print("I2C: Device 0x%02X returned 0x%02X from reg 0x%02X" % (self.address, result & 0xFF, reg))
+    return result
+	
+  def setPWMFreq(self, freq):
+    "Sets the PWM frequency"
+    prescaleval = 25000000.0    # 25MHz
+    prescaleval /= 4096.0       # 12-bit
+    prescaleval /= float(freq)
+    prescaleval -= 1.0
+    if (self.debug):
+      print("Setting PWM frequency to %d Hz" % freq)
+      print("Estimated pre-scale: %d" % prescaleval)
+    prescale = math.floor(prescaleval + 0.5)
+    if (self.debug):
+      print("Final pre-scale: %d" % prescale)
+
+    oldmode = self.read(self.__MODE1);
+    newmode = (oldmode & 0x7F) | 0x10        # sleep
+    self.write(self.__MODE1, newmode)        # go to sleep
+    self.write(self.__PRESCALE, int(math.floor(prescale)))
+    self.write(self.__MODE1, oldmode)
+    time.sleep(0.005)
+    self.write(self.__MODE1, oldmode | 0x80)
+
+  def setPWM(self, channel, on, off):
+    "Sets a single PWM channel"
+    self.write(self.__LED0_ON_L+4*channel, on & 0xFF)
+    self.write(self.__LED0_ON_H+4*channel, on >> 8)
+    self.write(self.__LED0_OFF_L+4*channel, off & 0xFF)
+    self.write(self.__LED0_OFF_H+4*channel, off >> 8)
+    if (self.debug):
+      print("channel: %d  LED_ON: %d LED_OFF: %d" % (channel,on,off))
+	  
+  def setServoPulse(self, channel, pulse):
+    "Sets the Servo Pulse,The PWM frequency must be 50HZ"
+    pulse = pulse*4096/20000        #PWM frequency is 50HZ,the period is 20000us
+    self.setPWM(channel, 0, pulse)
+
+def setup_servo():
+    global pwm
+    pwm = PCA9685(0x40, debug=False)
+    pwm.setPWMFreq(50)
+
+def set_servo_angle(angle):
+    pulse_min = 500
+    pulse_max = 2500
+    pulse = pulse_min + (pulse_max - pulse_min) * angle / 180
+    pwm.setServoPulse(0, int(pulse))
 #====================================================================================================================
 #MOTOR CONTROL
 
@@ -68,6 +156,7 @@ def stop():
 def forward():
     global PWMA, PWMB, continuous_movement
     continuous_movement = True
+    set_servo_angle(0)
     
     def continuous_forward():
         while continuous_movement:
@@ -84,6 +173,7 @@ def forward():
 def backward():
     global PWMA, PWMB, continuous_movement
     continuous_movement = True
+    set_servo_angle(0)
     
     def continuous_backward():
         while continuous_movement:
@@ -105,6 +195,8 @@ def left():
     GPIO.output(IN2, GPIO.HIGH)
     GPIO.output(IN3, GPIO.HIGH)
     GPIO.output(IN4, GPIO.LOW)
+    set_servo_angle(90)  # Turn servo 90 degrees in the opposite direction
+    time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
 
 def right():
     global PWMA, PWMB
@@ -114,6 +206,8 @@ def right():
     GPIO.output(IN2, GPIO.LOW)
     GPIO.output(IN3, GPIO.LOW)
     GPIO.output(IN4, GPIO.HIGH)
+    set_servo_angle(-90)  # Turn servo 90 degrees in the opposite direction
+    time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
 
 def setPWMA(value):
     global PA, PWMA
@@ -145,31 +239,7 @@ def setMotor(left, right):
 
 #========================================================================================================================
 #GESTY
-def Hand_Open(hand_landmarks,hand_label):
-    fingertip_ids = [4, 8, 12, 16, 20]
-    wrist_id = 0 
-    palm_base_id = 9
-    wrist = np.array([hand_landmarks.landmark[wrist_id].x, hand_landmarks.landmark[wrist_id].y])
-    palm_base = np.array([hand_landmarks.landmark[palm_base_id].x, hand_landmarks.landmark[palm_base_id].y])
-    wrist_to_palm_base = np.linalg.norm(wrist - palm_base)
 
-    open_hand_signals = 0
-    closed_hand_signals = 0
-    for fingertip_id in fingertip_ids:
-        fingertip = np.array([hand_landmarks.landmark[fingertip_id].x, hand_landmarks.landmark[fingertip_id].y])
-        wrist_to_fingertip = np.linalg.norm(wrist - fingertip)
-        ratio = wrist_to_fingertip / wrist_to_palm_base
-        if ratio > 0.8:
-            open_hand_signals += 1
-        elif ratio < 0.5: 
-            closed_hand_signals += 1
-
-    if open_hand_signals == 5:
-        return "Open"
-    elif closed_hand_signals <= 4: 
-        return "Closed"
-    else:
-        return "Neither"        
 def Hand_Orientation(hand_landmarks, hand_label):
     palm_center = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
     wrist = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
@@ -290,8 +360,6 @@ def Znak_L(hand_landmarks, hand_label):
         return False
 
 def Znak_B(hand_landmarks, hand_label):
-    if Hand_Open(hand_landmarks, hand_label) == "Open":
-        return False
     if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
         return False
     fingertip_ids = [8, 12, 16, 20]
@@ -590,6 +658,7 @@ def stop_moving():
 if __name__ == "__main__":
     
     setup_GPIO()
+    setup_servo()
     stop()
        
     root = tk.Tk()
