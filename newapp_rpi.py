@@ -20,7 +20,6 @@ hand_area_label = None
 black_image_tk = None
 hands = None
 picam2 = None
-frame_counter = 0
 gesture_counts = {}
 frame_counter = 0
 confirmed_gesture = None
@@ -196,7 +195,7 @@ def left():
     GPIO.output(IN3, GPIO.HIGH)
     GPIO.output(IN4, GPIO.LOW)
     set_servo_angle(90)  # Turn servo 90 degrees in the opposite direction
-    time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
+    #time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
 
 def right():
     global PWMA, PWMB
@@ -207,7 +206,7 @@ def right():
     GPIO.output(IN3, GPIO.LOW)
     GPIO.output(IN4, GPIO.HIGH)
     set_servo_angle(-90)  # Turn servo 90 degrees in the opposite direction
-    time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
+    #time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
 
 def setPWMA(value):
     global PA, PWMA
