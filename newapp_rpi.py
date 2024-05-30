@@ -188,26 +188,26 @@ def backward():
 
 def left():
     global PWMA, PWMB
-    PWMA.ChangeDutyCycle(15)
-    PWMB.ChangeDutyCycle(15)
+    PWMA.ChangeDutyCycle(30)
+    PWMB.ChangeDutyCycle(30)
     GPIO.output(IN1, GPIO.LOW)
     GPIO.output(IN2, GPIO.HIGH)
     GPIO.output(IN3, GPIO.HIGH)
     GPIO.output(IN4, GPIO.LOW)
-    time.sleep(0.25)
+    time.sleep(0.5)
     stop()
     #set_servo_angle(90)  # Turn servo 90 degrees in the opposite direction
     #time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
 
 def right():
     global PWMA, PWMB
-    PWMA.ChangeDutyCycle(15)
-    PWMB.ChangeDutyCycle(15)
+    PWMA.ChangeDutyCycle(30)
+    PWMB.ChangeDutyCycle(30)
     GPIO.output(IN1, GPIO.HIGH)
     GPIO.output(IN2, GPIO.LOW)
     GPIO.output(IN3, GPIO.LOW)
     GPIO.output(IN4, GPIO.HIGH)
-    time.sleep(0.25)
+    time.sleep(0.5)
     stop()
     #set_servo_angle(-90)  # Turn servo 90 degrees in the opposite direction
     #time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
@@ -242,7 +242,32 @@ def setMotor(left, right):
 
 #========================================================================================================================
 #GESTY
+def Hand_Open(hand_landmarks,hand_label):
+    fingertip_ids = [4, 8, 12, 16, 20]
+    wrist_id = 0 
+    palm_base_id = 9
+    wrist = np.array([hand_landmarks.landmark[wrist_id].x, hand_landmarks.landmark[wrist_id].y])
+    palm_base = np.array([hand_landmarks.landmark[palm_base_id].x, hand_landmarks.landmark[palm_base_id].y])
+    wrist_to_palm_base = np.linalg.norm(wrist - palm_base)
 
+    open_hand_signals = 0
+    closed_hand_signals = 0
+    for fingertip_id in fingertip_ids:
+        fingertip = np.array([hand_landmarks.landmark[fingertip_id].x, hand_landmarks.landmark[fingertip_id].y])
+        wrist_to_fingertip = np.linalg.norm(wrist - fingertip)
+        ratio = wrist_to_fingertip / wrist_to_palm_base
+        if ratio > 0.8:
+            open_hand_signals += 1
+        elif ratio < 0.5: 
+            closed_hand_signals += 1
+
+    if open_hand_signals == 5:
+        return "Open"
+    elif closed_hand_signals <= 4: 
+        return "Closed"
+    else:
+        return "Neither"
+    
 def Hand_Orientation(hand_landmarks, hand_label):
     palm_center = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
     wrist = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
@@ -363,6 +388,8 @@ def Znak_L(hand_landmarks, hand_label):
         return False
 
 def Znak_B(hand_landmarks, hand_label):
+    if Hand_Open(hand_landmarks, hand_label) == "Open":
+        return False
     if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
         return False
     fingertip_ids = [8, 12, 16, 20]
@@ -428,11 +455,11 @@ def Gesture_Confirmation(gesture_label):
 
     frame_counter += 1
 
-    if frame_counter == 10:
+    if frame_counter == 5:
         confirmed_gesture = None
         max_count = 0
         for gesture, count in gesture_counts.items():
-            if count > max_count and count >= 5:
+            if count > max_count and count >= 1:
                 confirmed_gesture = gesture
                 max_count = count
 
@@ -557,7 +584,7 @@ def Capture_Video():
                                 confirmed_gesture = None
                             break
 
-            cv2image = cv2.cvtColor(image, cv2.COLOR_BGR2RGBA)
+            cv2image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
         
@@ -576,7 +603,7 @@ def start_webcam():
     if not webcam_running:
         webcam_running = True
         mp_hands = mp.solutions.hands
-        hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.8, min_tracking_confidence=0.7)
+        hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.4, min_tracking_confidence=0.4)
         picam2 = Picamera2()
         time.sleep(0.03)
         video_config = picam2.create_video_configuration(main={"size":(640,480)},controls={"FrameRate": 30.0})
