@@ -34,8 +34,8 @@ ENA = 6
 IN3 = 21
 IN4 = 20
 ENB = 26
-PA = 20
-PB = 20
+PA = 10
+PB = 10
 
 #===================================================================================================
 #SERVO CONTROL
@@ -188,24 +188,28 @@ def backward():
 
 def left():
     global PWMA, PWMB
-    PWMA.ChangeDutyCycle(30)
-    PWMB.ChangeDutyCycle(30)
+    PWMA.ChangeDutyCycle(15)
+    PWMB.ChangeDutyCycle(15)
     GPIO.output(IN1, GPIO.LOW)
     GPIO.output(IN2, GPIO.HIGH)
     GPIO.output(IN3, GPIO.HIGH)
     GPIO.output(IN4, GPIO.LOW)
-    set_servo_angle(90)  # Turn servo 90 degrees in the opposite direction
+    time.sleep(0.25)
+    stop()
+    #set_servo_angle(90)  # Turn servo 90 degrees in the opposite direction
     #time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
 
 def right():
     global PWMA, PWMB
-    PWMA.ChangeDutyCycle(30)
-    PWMB.ChangeDutyCycle(30)
+    PWMA.ChangeDutyCycle(15)
+    PWMB.ChangeDutyCycle(15)
     GPIO.output(IN1, GPIO.HIGH)
     GPIO.output(IN2, GPIO.LOW)
     GPIO.output(IN3, GPIO.LOW)
     GPIO.output(IN4, GPIO.HIGH)
-    set_servo_angle(-90)  # Turn servo 90 degrees in the opposite direction
+    time.sleep(0.25)
+    stop()
+    #set_servo_angle(-90)  # Turn servo 90 degrees in the opposite direction
     #time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
 
 def setPWMA(value):
