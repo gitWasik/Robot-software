@@ -1,4 +1,3 @@
-
 import tkinter as tk
 from tkinter import ttk
 import threading
@@ -12,7 +11,9 @@ import Mock.GPIO as GPIO
 import sys
 import urllib.request
 import math
-import smbus
+import fake_rpi
+from fake_rpi import smbus
+sys.modules['smbus'] = fake_rpi.smbus
 
 webcam_thread = None
 webcam_running = False
@@ -26,6 +27,7 @@ frame_counter = 0
 confirmed_gesture = None
 last_confirmed_gesture = None
 gesture_navigation_running = False
+no_gesture_counter = 0
 
 PWMA = None
 PWMB = None
@@ -35,8 +37,8 @@ ENA = 6
 IN3 = 21
 IN4 = 20
 ENB = 26
-PA = 20
-PB = 20
+PA = 4
+PB = 4
 
 #===================================================================================================
 #SERVO CONTROL
@@ -143,9 +145,11 @@ def setup_GPIO():
     PWMA.start(PA)
     PWMB.start(PB)
 
+stop_event = threading.Event()
+
 def stop():
-    global PWMA, PWMB, continuous_movement
-    continuous_movement = False
+    global PWMA, PWMB, stop_event
+    stop_event.set()
     if PWMA is not None and PWMB is not None:
         PWMA.ChangeDutyCycle(0)
         PWMB.ChangeDutyCycle(0)
@@ -153,64 +157,76 @@ def stop():
         GPIO.output(IN2, GPIO.LOW)
         GPIO.output(IN3, GPIO.LOW)
         GPIO.output(IN4, GPIO.LOW)
+    print("Motors stopped")
+
+
+def left():
+    global PWMA, PWMB, stop_event
+    stop_event.clear()
+    
+    def continuous_left():
+        while not stop_event.is_set():
+            PWMA.ChangeDutyCycle(4)
+            PWMB.ChangeDutyCycle(4)
+            GPIO.output(IN1, GPIO.LOW)
+            GPIO.output(IN2, GPIO.HIGH)
+            GPIO.output(IN3, GPIO.HIGH)
+            GPIO.output(IN4, GPIO.LOW)
+            time.sleep(0.03)
+        print("\nLeft stopped")
+    
+    threading.Thread(target=continuous_left).start()
+
+def right():
+    global PWMA, PWMB, stop_event
+    stop_event.clear()
+    
+    def continuous_right():
+        while not stop_event.is_set():
+            PWMA.ChangeDutyCycle(4)
+            PWMB.ChangeDutyCycle(4)
+            GPIO.output(IN1, GPIO.HIGH)
+            GPIO.output(IN2, GPIO.LOW)
+            GPIO.output(IN3, GPIO.LOW)
+            GPIO.output(IN4, GPIO.HIGH)
+            time.sleep(0.03)
+        print("\nRight stopped")
+    
+    threading.Thread(target=continuous_right).start()
 
 def forward():
-    global PWMA, PWMB, continuous_movement
-    continuous_movement = True
+    global PWMA, PWMB, stop_event
+    stop_event.clear()
     
     def continuous_forward():
-        while continuous_movement:
+        while not stop_event.is_set():
             GPIO.output(IN1, GPIO.HIGH)
             GPIO.output(IN2, GPIO.LOW)
             GPIO.output(IN3, GPIO.HIGH)
             GPIO.output(IN4, GPIO.LOW)
             PWMA.ChangeDutyCycle(PA)
             PWMB.ChangeDutyCycle(PB)
-            time.sleep(0.03)  
+            time.sleep(0.03)
+        print("Forward movement stopped")
     
     threading.Thread(target=continuous_forward).start()
 
 def backward():
-    global PWMA, PWMB, continuous_movement
-    continuous_movement = True
+    global PWMA, PWMB, stop_event
+    stop_event.clear()
     
     def continuous_backward():
-        while continuous_movement:
+        while not stop_event.is_set():
             GPIO.output(IN1, GPIO.LOW)
             GPIO.output(IN2, GPIO.HIGH)
             GPIO.output(IN3, GPIO.LOW)
             GPIO.output(IN4, GPIO.HIGH)
             PWMA.ChangeDutyCycle(PA)
             PWMB.ChangeDutyCycle(PB)
-            time.sleep(0.03)  
+            time.sleep(0.03)
+        print("Backward movement stopped")
     
     threading.Thread(target=continuous_backward).start()
-
-def left():
-    global PWMA, PWMB
-    PWMA.ChangeDutyCycle(30)
-    PWMB.ChangeDutyCycle(30)
-    GPIO.output(IN1, GPIO.LOW)
-    GPIO.output(IN2, GPIO.HIGH)
-    GPIO.output(IN3, GPIO.HIGH)
-    GPIO.output(IN4, GPIO.LOW)
-    set_servo_angle(90)  # Turn servo 90 degrees in the opposite direction
-    time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
-    #stop()
-    #set_servo_angle(0)  # Reset servo to the original position
-
-def right():
-    global PWMA, PWMB
-    PWMA.ChangeDutyCycle(30)
-    PWMB.ChangeDutyCycle(30)
-    GPIO.output(IN1, GPIO.HIGH)
-    GPIO.output(IN2, GPIO.LOW)
-    GPIO.output(IN3, GPIO.LOW)
-    GPIO.output(IN4, GPIO.HIGH)
-    set_servo_angle(-90)  # Turn servo 90 degrees in the opposite direction
-    time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
-    #stop()
-    #set_servo_angle(0)  # Reset servo to the original position
 
 def setPWMA(value):
     global PA, PWMA
@@ -242,7 +258,31 @@ def setMotor(left, right):
         
 #===========================================================================================================
 #GESTY 
+def Hand_Open(hand_landmarks,hand_label):
+    fingertip_ids = [4, 8, 12, 16, 20]
+    wrist_id = 0 
+    palm_base_id = 9
+    wrist = np.array([hand_landmarks.landmark[wrist_id].x, hand_landmarks.landmark[wrist_id].y])
+    palm_base = np.array([hand_landmarks.landmark[palm_base_id].x, hand_landmarks.landmark[palm_base_id].y])
+    wrist_to_palm_base = np.linalg.norm(wrist - palm_base)
 
+    open_hand_signals = 0
+    closed_hand_signals = 0
+    for fingertip_id in fingertip_ids:
+        fingertip = np.array([hand_landmarks.landmark[fingertip_id].x, hand_landmarks.landmark[fingertip_id].y])
+        wrist_to_fingertip = np.linalg.norm(wrist - fingertip)
+        ratio = wrist_to_fingertip / wrist_to_palm_base
+        if ratio > 0.8:
+            open_hand_signals += 1
+        elif ratio < 0.5: 
+            closed_hand_signals += 1
+
+    if open_hand_signals == 5:
+        return "Open"
+    elif closed_hand_signals <= 4: 
+        return "Closed"
+    else:
+        return "Neither"
 def Hand_Orientation(hand_landmarks, hand_label):
     palm_center = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
     wrist = np.array([hand_landmarks.landmark[0].x, hand_landmarks.landmark[0].y, hand_landmarks.landmark[0].z])
@@ -363,6 +403,8 @@ def Znak_L(hand_landmarks, hand_label):
         return False
     
 def Znak_B(hand_landmarks, hand_label):
+    if Hand_Open(hand_landmarks, hand_label) == "Open":
+        return False
     if Hand_Orientation(hand_landmarks, hand_label) == "Outside":
         return False
     fingertip_ids = [8, 12, 16, 20]
@@ -427,11 +469,11 @@ def Gesture_Confirmation(gesture_label):
 
     frame_counter += 1
 
-    if frame_counter == 10:
+    if frame_counter == 7:
         confirmed_gesture = None
         max_count = 0
         for gesture, count in gesture_counts.items():
-            if count > max_count and count >= 5:
+            if count > max_count and count >= 3:
                 confirmed_gesture = gesture
                 max_count = count
 
@@ -439,6 +481,7 @@ def Gesture_Confirmation(gesture_label):
         frame_counter = 0
 
         if confirmed_gesture:
+            
             print("Confirmed gesture:", confirmed_gesture)
             return confirmed_gesture
 
@@ -457,8 +500,9 @@ def stop_gesture_navigation():
     gesture_navigation_button.config(text="START GESTURE NAVIGATION", style="TButton")
     
 def Gesture_Navigation(confirmed_gesture):
-    global webcam_running, last_confirmed_gesture, continuous_movement, gesture_navigation_running
+    global webcam_running, last_confirmed_gesture, gesture_navigation_running, no_gesture_counter
 
+    stop_event.clear()
     if not gesture_navigation_running:
         return
     
@@ -480,11 +524,15 @@ def Gesture_Navigation(confirmed_gesture):
     }
 
     if confirmed_gesture:
+        no_gesture_counter = 0  # Reset the counter when a gesture is confirmed
         if (confirmed_gesture == "F Sign" and last_confirmed_gesture == "F Sign") or \
-           (confirmed_gesture == "B Sign" and last_confirmed_gesture == "B Sign"):
+           (confirmed_gesture == "B Sign" and last_confirmed_gesture == "B Sign") or \
+           (confirmed_gesture == "L Sign" and last_confirmed_gesture == "L Sign") or \
+           (confirmed_gesture == "R Sign" and last_confirmed_gesture == "R Sign"):
             pass
         else:
-            continuous_movement = False
+            stop_event.set()
+            print(f"Transitioning from {last_confirmed_gesture} to {confirmed_gesture}")
             transition = (last_confirmed_gesture, confirmed_gesture)
             if transition in gesture_transitions:
                 stop_func, delay, next_func = gesture_transitions[transition]
@@ -496,25 +544,31 @@ def Gesture_Navigation(confirmed_gesture):
         last_confirmed_gesture = confirmed_gesture
         print(f"Executing command: {confirmed_gesture}")
     else:
-        continuous_movement = False
-        stop()
-        print("Stopping the robot")
+        no_gesture_counter += 1  # Increment the counter when no gesture is confirmed
+        print(f"No gesture confirmed for {no_gesture_counter} frames") 
+        if no_gesture_counter >= 10:
+            stop_event.set()
+            time.sleep(0.1)
+            stop()
+            print("Stopping the robot due to no confirmed gesture for 10 frames")
+            no_gesture_counter = 0
 
     if not webcam_running:
-        continuous_movement = False
+        stop_event.set()
         stop()
+        print("Stopping the robot due to webcam not running")
+
 
 #=======================================================================================================
 #APP
 def Capture_Video():
-    global webcam_running, frame_label, cam
+    global webcam_running, frame_label, cam, no_gesture_counter
     frame_counter = 0
     pixel_size = 0.03
     scaling = pixel_size ** 2
     try:
         while webcam_running:
             if not cam.isOpened():
-                #cam.open(0)
                 raise IOError("webcam not opened")
             ret, frame = cam.read()
             if not ret:
@@ -523,6 +577,8 @@ def Capture_Video():
             time.sleep(0.03)
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = hands.process(frame_rgb)
+            gesture_detected = False  # Flag to check if any gesture is detected
+
             if results.multi_hand_landmarks:
                 for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
                     hand_label = handedness.classification[0].label
@@ -553,10 +609,14 @@ def Capture_Video():
                             
                             confirmed_gesture = Gesture_Confirmation(gesture_label)
                             cv2.putText(frame, gesture_label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-                            if confirmed_gesture:
-                                Gesture_Navigation(confirmed_gesture)
-                                confirmed_gesture = None
+                            Gesture_Navigation(confirmed_gesture)
+                            gesture_detected = True  # Set flag to True if any gesture is detected
                             break
+                    else:
+                        Gesture_Navigation(None)
+
+            if not gesture_detected:
+                Gesture_Navigation(None)  # Call Gesture_Navigation with None if no gesture is detected
 
             cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(cv2image)
@@ -572,7 +632,6 @@ def Capture_Video():
         if hands:
             hands.close()
         cv2.destroyAllWindows()
-
 def start_webcam():
     global webcam_thread, webcam_running, hands, cam
     if not webcam_running:
