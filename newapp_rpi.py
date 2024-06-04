@@ -6,8 +6,8 @@ import mediapipe as mp
 import numpy as np
 from PIL import Image, ImageTk
 import time
-import RPi.GPIO as GPIO
-#import Mock.GPIO as GPIO
+#import RPi.GPIO as GPIO
+import Mock.GPIO as GPIO
 from picamera2 import Picamera2
 import sys
 import math
@@ -140,10 +140,12 @@ def setup_GPIO():
     PWMB = GPIO.PWM(ENB, 500)
     PWMA.start(PA)
     PWMB.start(PB)
+    
+stop_event = threading.Event()
 
 def stop():
-    global PWMA, PWMB, continuous_movement
-    continuous_movement = False
+    global PWMA, PWMB, stop_event
+    stop_event.set()
     if PWMA is not None and PWMB is not None:
         PWMA.ChangeDutyCycle(0)
         PWMB.ChangeDutyCycle(0)
@@ -151,74 +153,76 @@ def stop():
         GPIO.output(IN2, GPIO.LOW)
         GPIO.output(IN3, GPIO.LOW)
         GPIO.output(IN4, GPIO.LOW)
+    print("Motors stopped")
 
-def forward():
-    global PWMA, PWMB, continuous_movement
-    continuous_movement = True
-    #set_servo_angle(0)
-    
-    def continuous_forward():
-        while continuous_movement:
-            GPIO.output(IN1, GPIO.HIGH)
-            GPIO.output(IN2, GPIO.LOW)
-            GPIO.output(IN3, GPIO.HIGH)
-            GPIO.output(IN4, GPIO.LOW)
-            PWMA.ChangeDutyCycle(PA)
-            PWMB.ChangeDutyCycle(PB)
-            time.sleep(0.03)  
-    
-    threading.Thread(target=continuous_forward).start()
-
-def backward():
-    global PWMA, PWMB, continuous_movement
-    continuous_movement = True
-    #set_servo_angle(0)
-    
-    def continuous_backward():
-        while continuous_movement:
-            GPIO.output(IN1, GPIO.LOW)
-            GPIO.output(IN2, GPIO.HIGH)
-            GPIO.output(IN3, GPIO.LOW)
-            GPIO.output(IN4, GPIO.HIGH)
-            PWMA.ChangeDutyCycle(PA)
-            PWMB.ChangeDutyCycle(PB)
-            time.sleep(0.03)  
-    
-    threading.Thread(target=continuous_backward).start()
 
 def left():
-    global PWMA, PWMB, continuous_movement
-    continuous_movement = True
+    global PWMA, PWMB, stop_event
+    stop_event.clear()
     
     def continuous_left():
-        while continuous_movement:
-            PWMA.ChangeDutyCycle(3)
-            PWMB.ChangeDutyCycle(3)
+        while not stop_event.is_set():
+            PWMA.ChangeDutyCycle(4)
+            PWMB.ChangeDutyCycle(4)
             GPIO.output(IN1, GPIO.LOW)
             GPIO.output(IN2, GPIO.HIGH)
             GPIO.output(IN3, GPIO.HIGH)
             GPIO.output(IN4, GPIO.LOW)
-            #set_servo_angle(90)  # Turn servo 90 degrees in the opposite direction
             time.sleep(0.03)
+        print("Left movement stopped")
     
     threading.Thread(target=continuous_left).start()
 
 def right():
-    global PWMA, PWMB, continuous_movement
-    continuous_movement = True
+    global PWMA, PWMB, stop_event
+    stop_event.clear()
     
     def continuous_right():
-        while continuous_movement:
-            PWMA.ChangeDutyCycle(3)
-            PWMB.ChangeDutyCycle(3)
+        while not stop_event.is_set():
+            PWMA.ChangeDutyCycle(4)
+            PWMB.ChangeDutyCycle(4)
             GPIO.output(IN1, GPIO.HIGH)
             GPIO.output(IN2, GPIO.LOW)
             GPIO.output(IN3, GPIO.LOW)
             GPIO.output(IN4, GPIO.HIGH)
-            #set_servo_angle(-90)  # Turn servo 90 degrees in the opposite direction
             time.sleep(0.03)
+        print("Right movement stopped")
     
     threading.Thread(target=continuous_right).start()
+
+def forward():
+    global PWMA, PWMB, stop_event
+    stop_event.clear()
+    
+    def continuous_forward():
+        while not stop_event.is_set():
+            GPIO.output(IN1, GPIO.HIGH)
+            GPIO.output(IN2, GPIO.LOW)
+            GPIO.output(IN3, GPIO.HIGH)
+            GPIO.output(IN4, GPIO.LOW)
+            PWMA.ChangeDutyCycle(PA)
+            PWMB.ChangeDutyCycle(PB)
+            time.sleep(0.03)
+        print("Forward movement stopped")
+    
+    threading.Thread(target=continuous_forward).start()
+
+def backward():
+    global PWMA, PWMB, stop_event
+    stop_event.clear()
+    
+    def continuous_backward():
+        while not stop_event.is_set():
+            GPIO.output(IN1, GPIO.LOW)
+            GPIO.output(IN2, GPIO.HIGH)
+            GPIO.output(IN3, GPIO.LOW)
+            GPIO.output(IN4, GPIO.HIGH)
+            PWMA.ChangeDutyCycle(PA)
+            PWMB.ChangeDutyCycle(PB)
+            time.sleep(0.03)
+        print("Backward movement stopped")
+    
+    threading.Thread(target=continuous_backward).start()
 
 def setPWMA(value):
     global PA, PWMA
@@ -493,7 +497,7 @@ def stop_gesture_navigation():
     gesture_navigation_button.config(text="START GESTURE NAVIGATION", style="TButton")
     
 def Gesture_Navigation(confirmed_gesture):
-    global webcam_running, last_confirmed_gesture, continuous_movement, gesture_navigation_running
+    global webcam_running, last_confirmed_gesture, gesture_navigation_running
 
     if not gesture_navigation_running:
         return
@@ -522,7 +526,8 @@ def Gesture_Navigation(confirmed_gesture):
            (confirmed_gesture == "R Sign" and last_confirmed_gesture == "R Sign"):
             pass
         else:
-            continuous_movement = False
+            stop_event.set()
+            print(f"Transitioning from {last_confirmed_gesture} to {confirmed_gesture}")
             transition = (last_confirmed_gesture, confirmed_gesture)
             if transition in gesture_transitions:
                 stop_func, delay, next_func = gesture_transitions[transition]
@@ -534,13 +539,14 @@ def Gesture_Navigation(confirmed_gesture):
         last_confirmed_gesture = confirmed_gesture
         print(f"Executing command: {confirmed_gesture}")
     else:
-        continuous_movement = False
+        stop_event.set()
         stop()
-        print("Stopping the robot")
+        print("Stopping the robot due to no confirmed gesture")
 
     if not webcam_running:
-        continuous_movement = False
+        stop_event.set()
         stop()
+        print("Stopping the robot due to webcam not running")
 
 #==========================================================================================================================================
 #APP
@@ -591,6 +597,8 @@ def Capture_Video():
                             if confirmed_gesture:
                                 Gesture_Navigation(confirmed_gesture)
                                 confirmed_gesture = None
+                            else:
+                                stop()
                             break
 
             cv2image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -646,7 +654,7 @@ def stop_webcam():
         root.after(100, black_image)  
 
 def quit_app():
-    global webcam_running, picam2, webcam_thread, hands
+    global webcam_running, picam2, webcam_thread, hands, gesture_navigation_running
     webcam_running = False
     gesture_navigation_running = False
     if picam2:
