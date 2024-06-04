@@ -187,30 +187,38 @@ def backward():
     threading.Thread(target=continuous_backward).start()
 
 def left():
-    global PWMA, PWMB
-    PWMA.ChangeDutyCycle(30)
-    PWMB.ChangeDutyCycle(30)
-    GPIO.output(IN1, GPIO.LOW)
-    GPIO.output(IN2, GPIO.HIGH)
-    GPIO.output(IN3, GPIO.HIGH)
-    GPIO.output(IN4, GPIO.LOW)
-    time.sleep(0.5)
-    stop()
-    #set_servo_angle(90)  # Turn servo 90 degrees in the opposite direction
-    #time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
+    global PWMA, PWMB, continuous_movement
+    continuous_movement = True
+    
+    def continuous_left():
+        while continuous_movement:
+            PWMA.ChangeDutyCycle(4)
+            PWMB.ChangeDutyCycle(4)
+            GPIO.output(IN1, GPIO.LOW)
+            GPIO.output(IN2, GPIO.HIGH)
+            GPIO.output(IN3, GPIO.HIGH)
+            GPIO.output(IN4, GPIO.LOW)
+            #set_servo_angle(90)  # Turn servo 90 degrees in the opposite direction
+            time.sleep(0.03)
+    
+    threading.Thread(target=continuous_left).start()
 
 def right():
-    global PWMA, PWMB
-    PWMA.ChangeDutyCycle(30)
-    PWMB.ChangeDutyCycle(30)
-    GPIO.output(IN1, GPIO.HIGH)
-    GPIO.output(IN2, GPIO.LOW)
-    GPIO.output(IN3, GPIO.LOW)
-    GPIO.output(IN4, GPIO.HIGH)
-    time.sleep(0.5)
-    stop()
-    #set_servo_angle(-90)  # Turn servo 90 degrees in the opposite direction
-    #time.sleep(1.5)  # Adjust the delay as needed for a 90-degree turn
+    global PWMA, PWMB, continuous_movement
+    continuous_movement = True
+    
+    def continuous_right():
+        while continuous_movement:
+            PWMA.ChangeDutyCycle(4)
+            PWMB.ChangeDutyCycle(4)
+            GPIO.output(IN1, GPIO.HIGH)
+            GPIO.output(IN2, GPIO.LOW)
+            GPIO.output(IN3, GPIO.LOW)
+            GPIO.output(IN4, GPIO.HIGH)
+            #set_servo_angle(-90)  # Turn servo 90 degrees in the opposite direction
+            time.sleep(0.03)
+    
+    threading.Thread(target=continuous_right).start()
 
 def setPWMA(value):
     global PA, PWMA
@@ -509,7 +517,9 @@ def Gesture_Navigation(confirmed_gesture):
 
     if confirmed_gesture:
         if (confirmed_gesture == "F Sign" and last_confirmed_gesture == "F Sign") or \
-           (confirmed_gesture == "B Sign" and last_confirmed_gesture == "B Sign"):
+           (confirmed_gesture == "B Sign" and last_confirmed_gesture == "B Sign") or \
+           (confirmed_gesture == "L Sign" and last_confirmed_gesture == "L Sign") or \
+           (confirmed_gesture == "R Sign" and last_confirmed_gesture == "R Sign"):
             pass
         else:
             continuous_movement = False
@@ -532,7 +542,6 @@ def Gesture_Navigation(confirmed_gesture):
         continuous_movement = False
         stop()
 
-
 #==========================================================================================================================================
 #APP
 
@@ -545,7 +554,7 @@ def Capture_Video():
     try:
         while webcam_running:
             image = picam2.capture_array()
-            time.sleep(0.03)
+            #time.sleep(0.03)
             frame_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             results = hands.process(frame_rgb)
             if results.multi_hand_landmarks:
@@ -566,7 +575,7 @@ def Capture_Video():
                         Znak_R: "R Sign",
                         Znak_B: "B Sign"
                     }
-                    time.sleep(0.03)
+                    #time.sleep(0.03)
                     for gesture_func, gesture_label in gesture_functions.items():
                         if gesture_func(hand_landmarks, hand_label):
                             cv2.putText(image, gesture_label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
