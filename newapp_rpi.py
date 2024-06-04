@@ -6,8 +6,8 @@ import mediapipe as mp
 import numpy as np
 from PIL import Image, ImageTk
 import time
-#import RPi.GPIO as GPIO
-import Mock.GPIO as GPIO
+import RPi.GPIO as GPIO
+#import Mock.GPIO as GPIO
 from picamera2 import Picamera2
 import sys
 import math
@@ -34,8 +34,8 @@ ENA = 6
 IN3 = 21
 IN4 = 20
 ENB = 26
-PA = 10
-PB = 10
+PA = 5
+PB = 5
 
 #===================================================================================================
 #SERVO CONTROL
@@ -155,7 +155,7 @@ def stop():
 def forward():
     global PWMA, PWMB, continuous_movement
     continuous_movement = True
-    set_servo_angle(0)
+    #set_servo_angle(0)
     
     def continuous_forward():
         while continuous_movement:
@@ -172,7 +172,7 @@ def forward():
 def backward():
     global PWMA, PWMB, continuous_movement
     continuous_movement = True
-    set_servo_angle(0)
+    #set_servo_angle(0)
     
     def continuous_backward():
         while continuous_movement:
@@ -192,8 +192,8 @@ def left():
     
     def continuous_left():
         while continuous_movement:
-            PWMA.ChangeDutyCycle(4)
-            PWMB.ChangeDutyCycle(4)
+            PWMA.ChangeDutyCycle(3)
+            PWMB.ChangeDutyCycle(3)
             GPIO.output(IN1, GPIO.LOW)
             GPIO.output(IN2, GPIO.HIGH)
             GPIO.output(IN3, GPIO.HIGH)
@@ -209,8 +209,8 @@ def right():
     
     def continuous_right():
         while continuous_movement:
-            PWMA.ChangeDutyCycle(4)
-            PWMB.ChangeDutyCycle(4)
+            PWMA.ChangeDutyCycle(3)
+            PWMB.ChangeDutyCycle(3)
             GPIO.output(IN1, GPIO.HIGH)
             GPIO.output(IN2, GPIO.LOW)
             GPIO.output(IN3, GPIO.LOW)
@@ -463,11 +463,11 @@ def Gesture_Confirmation(gesture_label):
 
     frame_counter += 1
 
-    if frame_counter == 5:
+    if frame_counter == 7:
         confirmed_gesture = None
         max_count = 0
         for gesture, count in gesture_counts.items():
-            if count > max_count and count >= 1:
+            if count > max_count and count >= 3:
                 confirmed_gesture = gesture
                 max_count = count
 
@@ -612,12 +612,14 @@ def start_webcam():
     if not webcam_running:
         webcam_running = True
         mp_hands = mp.solutions.hands
-        hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.4, min_tracking_confidence=0.4)
+        hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.3, min_tracking_confidence=0.3)
         picam2 = Picamera2()
         time.sleep(0.03)
         video_config = picam2.create_video_configuration(main={"size":(640,480)},controls={"FrameRate": 30.0})
         picam2.configure(video_config)
         picam2.start()
+        brightness_value = 0.0  # Example brightness value, range is -1.0 to 1.0
+        picam2.set_controls({"Brightness": brightness_value})
         webcam_thread = threading.Thread(target=Capture_Video)
         webcam_thread.start()
         start_button.config(state=tk.DISABLED)
@@ -697,7 +699,7 @@ def stop_moving():
 if __name__ == "__main__":
     
     setup_GPIO()
-    setup_servo()
+    #setup_servo()
     stop()
        
     root = tk.Tk()
