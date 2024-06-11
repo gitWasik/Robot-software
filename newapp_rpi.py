@@ -732,7 +732,7 @@ def stop_moving():
 if __name__ == "__main__":
     
     setup_GPIO()
-    #setup_servo()
+    setup_servo()
     stop()
        
     root = tk.Tk()
