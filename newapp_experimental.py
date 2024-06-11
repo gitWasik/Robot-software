@@ -28,6 +28,7 @@ confirmed_gesture = None
 last_confirmed_gesture = None
 gesture_navigation_running = False
 no_gesture_counter = 0
+current_servo_angle = 90
 
 PWMA = None
 PWMB = None
@@ -126,6 +127,19 @@ def set_servo_angle(angle):
     pulse_max = 2500
     pulse = pulse_min + (pulse_max - pulse_min) * angle / 180
     pwm.setServoPulse(0, int(pulse))
+    
+def move_servo_gradually(target_angle, duration=2.0, steps=50):
+    global current_servo_angle, stop_event
+    step_delay = duration / steps
+    angle_step = (target_angle - current_servo_angle) / steps
+
+    for _ in range(steps):
+        if stop_event.is_set():
+            break
+        current_servo_angle += angle_step
+        set_servo_angle(current_servo_angle)
+        time.sleep(step_delay)
+
 
 #===================================================================================================
 #MOTOR CONTROL
@@ -148,7 +162,7 @@ def setup_GPIO():
 stop_event = threading.Event()
 
 def stop():
-    global PWMA, PWMB, stop_event
+    global PWMA, PWMB, stop_event, current_servo_angle
     stop_event.set()
     if PWMA is not None and PWMB is not None:
         PWMA.ChangeDutyCycle(0)
@@ -158,10 +172,11 @@ def stop():
         GPIO.output(IN3, GPIO.LOW)
         GPIO.output(IN4, GPIO.LOW)
     print("Motors stopped")
+    threading.Thread(target=move_servo_gradually, args=(90, 2.0)).start()
 
 
 def left():
-    global PWMA, PWMB, stop_event
+    global PWMA, PWMB, stop_event, current_servo_angle
     stop_event.clear()
     
     def continuous_left():
@@ -176,9 +191,11 @@ def left():
         print("\nLeft stopped")
     
     threading.Thread(target=continuous_left).start()
+    if current_servo_angle < 180:
+        threading.Thread(target=move_servo_gradually, args=(min(current_servo_angle + 90, 180), 2.0)).start()
 
 def right():
-    global PWMA, PWMB, stop_event
+    global PWMA, PWMB, stop_event, current_servo_angle
     stop_event.clear()
     
     def continuous_right():
@@ -193,6 +210,8 @@ def right():
         print("\nRight stopped")
     
     threading.Thread(target=continuous_right).start()
+    if current_servo_angle > 0:
+        threading.Thread(target=move_servo_gradually, args=(max(current_servo_angle - 90, 0), 2.0)).start()
 
 def forward():
     global PWMA, PWMB, stop_event
@@ -200,16 +219,17 @@ def forward():
     
     def continuous_forward():
         while not stop_event.is_set():
+            PWMA.ChangeDutyCycle(50)
+            PWMB.ChangeDutyCycle(50)
             GPIO.output(IN1, GPIO.HIGH)
             GPIO.output(IN2, GPIO.LOW)
             GPIO.output(IN3, GPIO.HIGH)
             GPIO.output(IN4, GPIO.LOW)
-            PWMA.ChangeDutyCycle(PA)
-            PWMB.ChangeDutyCycle(PB)
             time.sleep(0.03)
-        print("Forward movement stopped")
+        print("\nForward stopped")
     
     threading.Thread(target=continuous_forward).start()
+    threading.Thread(target=move_servo_gradually, args=(90, 2.0)).start()  # Reset servo to center position
 
 def backward():
     global PWMA, PWMB, stop_event
@@ -217,16 +237,17 @@ def backward():
     
     def continuous_backward():
         while not stop_event.is_set():
+            PWMA.ChangeDutyCycle(50)
+            PWMB.ChangeDutyCycle(50)
             GPIO.output(IN1, GPIO.LOW)
             GPIO.output(IN2, GPIO.HIGH)
             GPIO.output(IN3, GPIO.LOW)
             GPIO.output(IN4, GPIO.HIGH)
-            PWMA.ChangeDutyCycle(PA)
-            PWMB.ChangeDutyCycle(PB)
             time.sleep(0.03)
-        print("Backward movement stopped")
+        print("\nBackward stopped")
     
     threading.Thread(target=continuous_backward).start()
+    threading.Thread(target=move_servo_gradually, args=(90, 2.0)).start()  # Reset servo to center position
 
 def setPWMA(value):
     global PA, PWMA
@@ -545,7 +566,7 @@ def Gesture_Navigation(confirmed_gesture):
         print(f"Executing command: {confirmed_gesture}")
     else:
         no_gesture_counter += 1  # Increment the counter when no gesture is confirmed
-        print(f"No gesture confirmed for {no_gesture_counter} frames") 
+        #print(f"No gesture confirmed for {no_gesture_counter} frames") 
         if no_gesture_counter >= 10:
             stop_event.set()
             time.sleep(0.1)
@@ -600,12 +621,6 @@ def Capture_Video():
                     time.sleep(0.03)
                     for gesture_func, gesture_label in gesture_functions.items():
                         if gesture_func(hand_landmarks, hand_label):
-                            frame_counter += 1
-                            if frame_counter == 15:
-                                hand_area_pixels = (x_max - x_min) * (y_max - y_min)
-                                hand_area = int(hand_area_pixels * scaling)
-                                hand_area_label.config(text=f"Hand area: {hand_area} UNITS")
-                                frame_counter = 0
                             
                             confirmed_gesture = Gesture_Confirmation(gesture_label)
                             cv2.putText(frame, gesture_label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
@@ -618,7 +633,7 @@ def Capture_Video():
             if not gesture_detected:
                 Gesture_Navigation(None)  # Call Gesture_Navigation with None if no gesture is detected
 
-            cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+            cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
             
@@ -632,6 +647,7 @@ def Capture_Video():
         if hands:
             hands.close()
         cv2.destroyAllWindows()
+        
 def start_webcam():
     global webcam_thread, webcam_running, hands, cam
     if not webcam_running:
