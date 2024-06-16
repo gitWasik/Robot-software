@@ -11,7 +11,7 @@ import Mock.GPIO as GPIO
 from picamera2 import Picamera2
 import sys
 import math
-import smbus
+
 
 webcam_thread = None
 webcam_running = False
@@ -69,44 +69,36 @@ def stop():
         GPIO.output(IN3, GPIO.LOW)
         GPIO.output(IN4, GPIO.LOW)
     print("Motors stopped")
-    threading.Thread(target=move_servo_gradually, args=(90, 2.0)).start()
+    
 
 
 def left():
-    global PWMA, PWMB, stop_event, current_servo_angle
+    global PWMA, PWMB, stop_event
     stop_event.clear()
-    
-    def continuous_left():
-        while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(4)
-            PWMB.ChangeDutyCycle(4)
-            GPIO.output(IN1, GPIO.LOW)
-            GPIO.output(IN2, GPIO.HIGH)
-            GPIO.output(IN3, GPIO.HIGH)
-            GPIO.output(IN4, GPIO.LOW)
-            time.sleep(0.03)
-        print("\nLeft stopped")
+    PWMA.ChangeDutyCycle(4)
+    PWMB.ChangeDutyCycle(4)
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.HIGH)
+    GPIO.output(IN3, GPIO.HIGH)
+    GPIO.output(IN4, GPIO.LOW)
+    time.sleep(0.03)
+    print("\nLeft stopped")
     
    
 
 def right():
-    global PWMA, PWMB, stop_event, current_servo_angle
+    global PWMA, PWMB, stop_event
     stop_event.clear()
+    PWMA.ChangeDutyCycle(4)
+    PWMB.ChangeDutyCycle(4)
+    GPIO.output(IN1, GPIO.HIGH)
+    GPIO.output(IN2, GPIO.LOW)
+    GPIO.output(IN3, GPIO.LOW)
+    GPIO.output(IN4, GPIO.HIGH)
+    time.sleep(0.03)
+    print("\nRight stopped")
     
-    def continuous_right():
-        while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(4)
-            PWMB.ChangeDutyCycle(4)
-            GPIO.output(IN1, GPIO.HIGH)
-            GPIO.output(IN2, GPIO.LOW)
-            GPIO.output(IN3, GPIO.LOW)
-            GPIO.output(IN4, GPIO.HIGH)
-            time.sleep(0.03)
-        print("\nRight stopped")
     
-    threading.Thread(target=continuous_right).start()
-    if current_servo_angle > 0:
-        threading.Thread(target=move_servo_gradually, args=(max(current_servo_angle - 90, 0), 2.0)).start()
 
 def forward():
     global PWMA, PWMB, stop_event
@@ -114,8 +106,8 @@ def forward():
     
     def continuous_forward():
         while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(50)
-            PWMB.ChangeDutyCycle(50)
+            PWMA.ChangeDutyCycle(4)
+            PWMB.ChangeDutyCycle(4)
             GPIO.output(IN1, GPIO.HIGH)
             GPIO.output(IN2, GPIO.LOW)
             GPIO.output(IN3, GPIO.HIGH)
@@ -124,7 +116,7 @@ def forward():
         print("\nForward stopped")
     
     threading.Thread(target=continuous_forward).start()
-    threading.Thread(target=move_servo_gradually, args=(90, 2.0)).start()  # Reset servo to center position
+    
 
 def backward():
     global PWMA, PWMB, stop_event
@@ -132,8 +124,8 @@ def backward():
     
     def continuous_backward():
         while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(50)
-            PWMB.ChangeDutyCycle(50)
+            PWMA.ChangeDutyCycle(4)
+            PWMB.ChangeDutyCycle(4)
             GPIO.output(IN1, GPIO.LOW)
             GPIO.output(IN2, GPIO.HIGH)
             GPIO.output(IN3, GPIO.LOW)
@@ -142,7 +134,7 @@ def backward():
         print("\nBackward stopped")
     
     threading.Thread(target=continuous_backward).start()
-    threading.Thread(target=move_servo_gradually, args=(90, 2.0)).start()  # Reset servo to center position
+
 
     
 def setPWMA(value):
