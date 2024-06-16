@@ -75,13 +75,14 @@ def stop():
 def left():
     global PWMA, PWMB, stop_event
     stop_event.clear()
-    PWMA.ChangeDutyCycle(4)
-    PWMB.ChangeDutyCycle(4)
+    PWMA.ChangeDutyCycle(10)
+    PWMB.ChangeDutyCycle(10)
     GPIO.output(IN1, GPIO.LOW)
     GPIO.output(IN2, GPIO.HIGH)
     GPIO.output(IN3, GPIO.HIGH)
     GPIO.output(IN4, GPIO.LOW)
-    time.sleep(0.03)
+    time.sleep(0.25)
+    stop()
     print("\nLeft stopped")
     
    
@@ -89,13 +90,14 @@ def left():
 def right():
     global PWMA, PWMB, stop_event
     stop_event.clear()
-    PWMA.ChangeDutyCycle(4)
-    PWMB.ChangeDutyCycle(4)
+    PWMA.ChangeDutyCycle(12)
+    PWMB.ChangeDutyCycle(12)
     GPIO.output(IN1, GPIO.HIGH)
     GPIO.output(IN2, GPIO.LOW)
     GPIO.output(IN3, GPIO.LOW)
     GPIO.output(IN4, GPIO.HIGH)
-    time.sleep(0.03)
+    time.sleep(0.25)
+    stop()
     print("\nRight stopped")
     
     
@@ -106,8 +108,8 @@ def forward():
     
     def continuous_forward():
         while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(4)
-            PWMB.ChangeDutyCycle(4)
+            PWMA.ChangeDutyCycle(5)
+            PWMB.ChangeDutyCycle(5)
             GPIO.output(IN1, GPIO.HIGH)
             GPIO.output(IN2, GPIO.LOW)
             GPIO.output(IN3, GPIO.HIGH)
@@ -124,8 +126,8 @@ def backward():
     
     def continuous_backward():
         while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(4)
-            PWMB.ChangeDutyCycle(4)
+            PWMA.ChangeDutyCycle(5)
+            PWMB.ChangeDutyCycle(5)
             GPIO.output(IN1, GPIO.LOW)
             GPIO.output(IN2, GPIO.HIGH)
             GPIO.output(IN3, GPIO.LOW)
@@ -623,7 +625,6 @@ def stop_moving():
 if __name__ == "__main__":
     
     setup_GPIO()
-    setup_servo()
     stop()
        
     root = tk.Tk()
