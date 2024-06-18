@@ -6,8 +6,8 @@ import mediapipe as mp
 import numpy as np
 from PIL import Image, ImageTk
 import time
-import RPi.GPIO as GPIO
-#import Mock.GPIO as GPIO
+#import RPi.GPIO as GPIO
+import Mock.GPIO as GPIO
 from picamera2 import Picamera2
 import sys
 import math
@@ -137,6 +137,39 @@ def move_servo_gradually(target_angle, duration=2.0, steps=50):
         current_servo_angle += angle_step
         set_servo_angle(current_servo_angle)
         time.sleep(step_delay)
+
+servo_running = False
+
+def start_servo_left(event):
+    global servo_running
+    servo_running = True
+    threading.Thread(target=move_servo_left).start()
+
+def stop_servo(event):
+    global servo_running
+    servo_running = False
+
+def move_servo_left():
+    global servo_running, current_servo_angle
+    while servo_running:
+        if current_servo_angle < 180:
+            current_servo_angle += 1
+            set_servo_angle(current_servo_angle)
+        time.sleep(0.05)  # Adjust the speed as needed
+
+def start_servo_right(event):
+    global servo_running
+    servo_running = True
+    threading.Thread(target=move_servo_right).start()
+
+def move_servo_right():
+    global servo_running, current_servo_angle
+    while servo_running:
+        if current_servo_angle > 0:
+            current_servo_angle -= 1
+            set_servo_angle(current_servo_angle)
+        time.sleep(0.05)  # Adjust the speed as needed
+
 #====================================================================================================================
 #MOTOR CONTROL
 
@@ -215,8 +248,8 @@ def forward():
     
     def continuous_forward():
         while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(5)
-            PWMB.ChangeDutyCycle(5)
+            PWMA.ChangeDutyCycle(50)
+            PWMB.ChangeDutyCycle(50)
             GPIO.output(IN1, GPIO.HIGH)
             GPIO.output(IN2, GPIO.LOW)
             GPIO.output(IN3, GPIO.HIGH)
@@ -233,8 +266,8 @@ def backward():
     
     def continuous_backward():
         while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(5)
-            PWMB.ChangeDutyCycle(5)
+            PWMA.ChangeDutyCycle(50)
+            PWMB.ChangeDutyCycle(50)
             GPIO.output(IN1, GPIO.LOW)
             GPIO.output(IN2, GPIO.HIGH)
             GPIO.output(IN3, GPIO.LOW)
@@ -566,11 +599,11 @@ def Gesture_Navigation(confirmed_gesture):
     else:
         no_gesture_counter += 1  # Increment the counter when no gesture is confirmed
         #print(f"No gesture confirmed for {no_gesture_counter} frames") 
-        if no_gesture_counter >= 30:
+        if no_gesture_counter >= 10:
             stop_event.set()
             time.sleep(0.1)
             stop()
-            print("Stopping the robot due to no confirmed gesture for 30 frames")
+            print("Stopping the robot due to no confirmed gesture for 10 frames")
             no_gesture_counter = 0
 
     if not webcam_running:
@@ -729,8 +762,9 @@ def stop_moving():
     stop()
     print("Stop moving button pressed")
     
+# Inside the __main__ section where you create the buttons
+
 if __name__ == "__main__":
-    
     setup_GPIO()
     setup_servo()
     stop()
@@ -760,19 +794,33 @@ if __name__ == "__main__":
     forward_button.bind("<ButtonPress-1>", forward_button_command)
     forward_button.bind("<ButtonRelease-1>", forward_button_released)
 
-    left_button = ttk.Button(movement_frame, text="LEFT", command=left_button_command)
+    left_button = ttk.Button(movement_frame, text="LEFT")
     left_button.grid(row=1, column=0, padx=5, pady=5)
+    left_button.bind("<ButtonPress-1>", left_button_command)
+    left_button.bind("<ButtonRelease-1>", stop_servo)
 
     stop_moving_button = ttk.Button(movement_frame, text="STOP MOVING", command=stop_moving)
     stop_moving_button.grid(row=1, column=1, padx=5, pady=5)
 
-    right_button = ttk.Button(movement_frame, text="RIGHT", command=right_button_command)
+    right_button = ttk.Button(movement_frame, text="RIGHT")
     right_button.grid(row=1, column=2, padx=5, pady=5)
+    right_button.bind("<ButtonPress-1>", right_button_command)
+    right_button.bind("<ButtonRelease-1>", stop_servo)
 
     backward_button = ttk.Button(movement_frame, text="BACKWARD")
     backward_button.grid(row=2, column=1, padx=5, pady=5)
     backward_button.bind("<ButtonPress-1>", backward_button_command)
     backward_button.bind("<ButtonRelease-1>", backward_button_released)
+
+    servo_left_button = ttk.Button(movement_frame, text="SERVO LEFT")
+    servo_left_button.grid(row=3, column=0, padx=5, pady=5)
+    servo_left_button.bind("<ButtonPress-1>", start_servo_left)
+    servo_left_button.bind("<ButtonRelease-1>", stop_servo)
+
+    servo_right_button = ttk.Button(movement_frame, text="SERVO RIGHT")
+    servo_right_button.grid(row=3, column=2, padx=5, pady=5)
+    servo_right_button.bind("<ButtonPress-1>", start_servo_right)
+    servo_right_button.bind("<ButtonRelease-1>", stop_servo)
 
     start_button = ttk.Button(root, text="START WEBCAM", command=start_webcam)
     start_button.grid(row=0, column=1, padx=10, pady=(10, 2))
