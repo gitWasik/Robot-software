@@ -207,38 +207,29 @@ def stop():
 def left():
     global PWMA, PWMB, stop_event
     stop_event.clear()
-    
-    def continuous_left():
-        while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(4)
-            PWMB.ChangeDutyCycle(4)
-            GPIO.output(IN1, GPIO.LOW)
-            GPIO.output(IN2, GPIO.HIGH)
-            GPIO.output(IN3, GPIO.HIGH)
-            GPIO.output(IN4, GPIO.LOW)
-            time.sleep(0.03)
-        print("\nLeft stopped")
-    
-    threading.Thread(target=continuous_left).start()
+    PWMA.ChangeDutyCycle(12)
+    PWMB.ChangeDutyCycle(12)
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.HIGH)
+    GPIO.output(IN3, GPIO.HIGH)
+    GPIO.output(IN4, GPIO.LOW)
+    time.sleep(0.42)
+    stop()
+    print("\nLeft stopped")
     
 
 def right():
     global PWMA, PWMB, stop_event
     stop_event.clear()
-    
-    def continuous_right():
-        while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(4)
-            PWMB.ChangeDutyCycle(4)
-            GPIO.output(IN1, GPIO.HIGH)
-            GPIO.output(IN2, GPIO.LOW)
-            GPIO.output(IN3, GPIO.LOW)
-            GPIO.output(IN4, GPIO.HIGH)
-            time.sleep(0.03)
-        print("\nRight stopped")
-    
-    threading.Thread(target=continuous_right).start()
-    
+    PWMA.ChangeDutyCycle(12)
+    PWMB.ChangeDutyCycle(12)
+    GPIO.output(IN1, GPIO.HIGH)
+    GPIO.output(IN2, GPIO.LOW)
+    GPIO.output(IN3, GPIO.LOW)
+    GPIO.output(IN4, GPIO.HIGH)
+    time.sleep(0.42)
+    stop()
+    print("\nRight stopped")
 
 def forward():
     global PWMA, PWMB, stop_event
@@ -246,8 +237,8 @@ def forward():
     
     def continuous_forward():
         while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(5)
-            PWMB.ChangeDutyCycle(5)
+            PWMA.ChangeDutyCycle(6)
+            PWMB.ChangeDutyCycle(6)
             GPIO.output(IN1, GPIO.HIGH)
             GPIO.output(IN2, GPIO.LOW)
             GPIO.output(IN3, GPIO.HIGH)
@@ -264,8 +255,8 @@ def backward():
     
     def continuous_backward():
         while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(5)
-            PWMB.ChangeDutyCycle(5)
+            PWMA.ChangeDutyCycle(6)
+            PWMB.ChangeDutyCycle(6)
             GPIO.output(IN1, GPIO.LOW)
             GPIO.output(IN2, GPIO.HIGH)
             GPIO.output(IN3, GPIO.LOW)
