@@ -605,6 +605,8 @@ def Gesture_Navigation(confirmed_gesture):
 
 def Capture_Video():
     global webcam_running, frame_label, picam2
+    mp_hands = mp.solutions.hands
+    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.3, min_tracking_confidence=0.3)
     frame_counter = 0
     pixel_size = 0.03
     scaling = pixel_size ** 2
@@ -656,8 +658,8 @@ def Capture_Video():
             frame_label.image = imgtk
             time.sleep(0.03)
     finally:
-        picam2.stop()
         hands.close()
+        picam2.stop()
         cv2.destroyAllWindows()
 
 
@@ -665,8 +667,6 @@ def start_webcam():
     global webcam_thread, webcam_running, hands, picam2
     if not webcam_running:
         webcam_running = True
-        mp_hands = mp.solutions.hands
-        hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.3, min_tracking_confidence=0.3)
         picam2 = Picamera2()
         time.sleep(0.03)
         video_config = picam2.create_video_configuration(main={"size":(640,480)},controls={"FrameRate": 30.0})
@@ -704,8 +704,7 @@ def quit_app():
     webcam_running = False
     gesture_navigation_running = False
     if picam2:
-        picam2.close()
-        
+        picam2.close()    
     if hands and getattr(hands, '_graph', None) is not None:
         hands.close()
         hands = None
