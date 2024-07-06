@@ -127,13 +127,11 @@ def set_servo_angle(angle):
     pwm.setServoPulse(0, int(pulse))
     
 def move_servo_gradually(target_angle, duration=2.0, steps=50):
-    global current_servo_angle, stop_event
+    global current_servo_angle
     step_delay = duration / steps
     angle_step = (target_angle - current_servo_angle) / steps
 
     for _ in range(steps):
-        if stop_event.is_set():
-            break
         current_servo_angle += angle_step
         set_servo_angle(current_servo_angle)
         time.sleep(step_delay)
@@ -187,12 +185,9 @@ def setup_GPIO():
     PWMB = GPIO.PWM(ENB, 500)
     PWMA.start(PA)
     PWMB.start(PB)
-    
-stop_event = threading.Event()
 
 def stop():
-    global PWMA, PWMB, stop_event
-    stop_event.set()
+    global PWMA, PWMB
     if PWMA is not None and PWMB is not None:
         PWMA.ChangeDutyCycle(0)
         PWMB.ChangeDutyCycle(0)
@@ -201,12 +196,8 @@ def stop():
         GPIO.output(IN3, GPIO.LOW)
         GPIO.output(IN4, GPIO.LOW)
     print("Motors stopped")
-    
-
 
 def left():
-    global PWMA, PWMB, stop_event
-    stop_event.clear()
     PWMA.ChangeDutyCycle(12)
     PWMB.ChangeDutyCycle(12)
     GPIO.output(IN1, GPIO.LOW)
@@ -216,11 +207,8 @@ def left():
     time.sleep(0.42)
     stop()
     print("\nLeft stopped")
-    
 
 def right():
-    global PWMA, PWMB, stop_event
-    stop_event.clear()
     PWMA.ChangeDutyCycle(12)
     PWMB.ChangeDutyCycle(12)
     GPIO.output(IN1, GPIO.HIGH)
@@ -232,11 +220,8 @@ def right():
     print("\nRight stopped")
 
 def forward():
-    global PWMA, PWMB, stop_event
-    stop_event.clear()
-    
     def continuous_forward():
-        while not stop_event.is_set():
+        while webcam_running:
             PWMA.ChangeDutyCycle(9)
             PWMB.ChangeDutyCycle(9)
             GPIO.output(IN1, GPIO.HIGH)
@@ -247,14 +232,10 @@ def forward():
         print("\nForward stopped")
     
     threading.Thread(target=continuous_forward).start()
-    
 
 def backward():
-    global PWMA, PWMB, stop_event
-    stop_event.clear()
-    
     def continuous_backward():
-        while not stop_event.is_set():
+        while webcam_running:
             PWMA.ChangeDutyCycle(9)
             PWMB.ChangeDutyCycle(9)
             GPIO.output(IN1, GPIO.LOW)
@@ -266,7 +247,6 @@ def backward():
     
     threading.Thread(target=continuous_backward).start()
 
-    
 def setPWMA(value):
     global PA, PWMA
     PA = value
@@ -543,7 +523,6 @@ def stop_gesture_navigation():
 def Gesture_Navigation(confirmed_gesture):
     global webcam_running, last_confirmed_gesture, gesture_navigation_running, no_gesture_counter
 
-    stop_event.clear()
     if not gesture_navigation_running:
         return
     
@@ -572,7 +551,6 @@ def Gesture_Navigation(confirmed_gesture):
            (confirmed_gesture == "R Sign" and last_confirmed_gesture == "R Sign"):
             pass
         else:
-            stop_event.set()
             print(f"Transitioning from {last_confirmed_gesture} to {confirmed_gesture}")
             transition = (last_confirmed_gesture, confirmed_gesture)
             if transition in gesture_transitions:
@@ -586,16 +564,12 @@ def Gesture_Navigation(confirmed_gesture):
         print(f"Executing command: {confirmed_gesture}")
     else:
         no_gesture_counter += 1  # Increment the counter when no gesture is confirmed
-        #print(f"No gesture confirmed for {no_gesture_counter} frames") 
         if no_gesture_counter >= 10:
-            stop_event.set()
-            time.sleep(0.1)
             stop()
             print("Stopping the robot due to no confirmed gesture for 10 frames")
             no_gesture_counter = 0
 
     if not webcam_running:
-        stop_event.set()
         stop()
         print("Stopping the robot due to webcam not running")
 
@@ -695,6 +669,8 @@ def stop_webcam():
     if webcam_running:
         webcam_running = False
         gesture_navigation_running = False
+        if webcam_thread:
+            webcam_thread.join()  # Ensure the thread exits before continuing
         start_button.config(state=tk.NORMAL)
         stop_button.config(state=tk.DISABLED)
         root.after(100, black_image)  
@@ -703,6 +679,8 @@ def quit_app():
     global webcam_running, picam2, webcam_thread, hands, gesture_navigation_running
     webcam_running = False
     gesture_navigation_running = False
+    if webcam_thread:
+        webcam_thread.join()  # Ensure the thread exits before continuing
     if picam2:
         picam2.close()    
     if hands and getattr(hands, '_graph', None) is not None:
