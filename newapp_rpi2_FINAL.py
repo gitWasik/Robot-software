@@ -36,8 +36,8 @@ ENA = 6
 IN3 = 21
 IN4 = 20
 ENB = 26
-PA = 5
-PB = 5
+PA = 15
+PB = 15
 
 #===================================================================================================
 #SERVO CONTROL
@@ -237,8 +237,8 @@ def forward():
     
     def continuous_forward():
         while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(6)
-            PWMB.ChangeDutyCycle(6)
+            PWMA.ChangeDutyCycle(9)
+            PWMB.ChangeDutyCycle(9)
             GPIO.output(IN1, GPIO.HIGH)
             GPIO.output(IN2, GPIO.LOW)
             GPIO.output(IN3, GPIO.HIGH)
@@ -255,8 +255,8 @@ def backward():
     
     def continuous_backward():
         while not stop_event.is_set():
-            PWMA.ChangeDutyCycle(6)
-            PWMB.ChangeDutyCycle(6)
+            PWMA.ChangeDutyCycle(9)
+            PWMB.ChangeDutyCycle(9)
             GPIO.output(IN1, GPIO.LOW)
             GPIO.output(IN2, GPIO.HIGH)
             GPIO.output(IN3, GPIO.LOW)
