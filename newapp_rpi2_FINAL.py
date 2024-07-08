@@ -217,7 +217,7 @@ def left():
     GPIO.output(IN2, GPIO.HIGH)
     GPIO.output(IN3, GPIO.HIGH)
     GPIO.output(IN4, GPIO.LOW)
-    time.sleep(0.42)
+    time.sleep(0.50)
     stop()
     print("\nLeft stopped")
     
@@ -231,7 +231,7 @@ def right():
     GPIO.output(IN2, GPIO.LOW)
     GPIO.output(IN3, GPIO.LOW)
     GPIO.output(IN4, GPIO.HIGH)
-    time.sleep(0.42)
+    time.sleep(0.50)
     stop()
     print("\nRight stopped")
 
@@ -544,74 +544,78 @@ def stop_gesture_navigation():
     print("Gesture navigation stopped")
     gesture_navigation_button.config(text="START GESTURE NAVIGATION", style="TButton")
     
+gesture_lock = threading.Lock()
+
 def Gesture_Navigation(confirmed_gesture):
     global webcam_running, last_confirmed_gesture, gesture_navigation_running, no_gesture_counter
 
-    stop_event.clear()
-    if not gesture_navigation_running:
-        return
-    
-    gesture_commands = {
-        "F Sign": forward,
-        "B Sign": backward,
-        "L Sign": left,
-        "R Sign": right,
-        "S Sign": stop
-    }
+    with gesture_lock:
+        stop_event.clear()
+        if not gesture_navigation_running:
+            return
+        
+        gesture_commands = {
+            "F Sign": forward,
+            "B Sign": backward,
+            "L Sign": left,
+            "R Sign": right,
+            "S Sign": stop
+        }
 
-    gesture_transitions = {
-        ("F Sign", "L Sign"): (stop, 0.5, left),
-        ("F Sign", "R Sign"): (stop, 0.5, right),
-        ("B Sign", "L Sign"): (stop, 0.5, left),
-        ("B Sign", "R Sign"): (stop, 0.5, right),
-        ("L Sign", "R Sign"): (stop, 0.5, right),
-        ("R Sign", "L Sign"): (stop, 0.5, left)
-    }
+        gesture_transitions = {
+            ("F Sign", "L Sign"): (stop, 0.5, left),
+            ("F Sign", "R Sign"): (stop, 0.5, right),
+            ("B Sign", "L Sign"): (stop, 0.5, left),
+            ("B Sign", "R Sign"): (stop, 0.5, right),
+            ("L Sign", "R Sign"): (stop, 0.5, right),
+            ("R Sign", "L Sign"): (stop, 0.5, left)
+        }
 
-    if confirmed_gesture:
-        no_gesture_counter = 0  # Reset the counter when a gesture is confirmed
-        if (confirmed_gesture == "F Sign" and last_confirmed_gesture == "F Sign") or \
-           (confirmed_gesture == "B Sign" and last_confirmed_gesture == "B Sign") or \
-           (confirmed_gesture == "L Sign" and last_confirmed_gesture == "L Sign") or \
-           (confirmed_gesture == "R Sign" and last_confirmed_gesture == "R Sign"):
-            pass
-        else:
-            stop_event.set()
-            print(f"Transitioning from {last_confirmed_gesture} to {confirmed_gesture}")
-            transition = (last_confirmed_gesture, confirmed_gesture)
-            if transition in gesture_transitions:
-                stop_func, delay, next_func = gesture_transitions[transition]
-                stop_func()
-                time.sleep(delay)
-                next_func()
+        if confirmed_gesture:
+            no_gesture_counter = 0  # Reset the counter when a gesture is confirmed
+            if (confirmed_gesture == "F Sign" and last_confirmed_gesture == "F Sign") or \
+               (confirmed_gesture == "B Sign" and last_confirmed_gesture == "B Sign") or \
+               (confirmed_gesture == "L Sign" and last_confirmed_gesture == "L Sign") or \
+               (confirmed_gesture == "R Sign" and last_confirmed_gesture == "R Sign"):
+                pass
             else:
-                gesture_commands[confirmed_gesture]()
-        last_confirmed_gesture = confirmed_gesture
-        print(f"Executing command: {confirmed_gesture}")
-    else:
-        no_gesture_counter += 1  # Increment the counter when no gesture is confirmed
-        #print(f"No gesture confirmed for {no_gesture_counter} frames") 
-        if no_gesture_counter >= 10:
-            stop_event.set()
-            time.sleep(0.1)
-            stop()
-            print("Stopping the robot due to no confirmed gesture for 10 frames")
-            no_gesture_counter = 0
+                stop_event.set()
+                print(f"Transitioning from {last_confirmed_gesture} to {confirmed_gesture}")
+                transition = (last_confirmed_gesture, confirmed_gesture)
+                if transition in gesture_transitions:
+                    stop_func, delay, next_func = gesture_transitions[transition]
+                    stop_func()
+                    time.sleep(delay)
+                    next_func()
+                else:
+                    gesture_commands[confirmed_gesture]()
+            last_confirmed_gesture = confirmed_gesture
+            print(f"Executing command: {confirmed_gesture}")
+        else:
+            no_gesture_counter += 1  # Increment the counter when no gesture is confirmed
+            if no_gesture_counter >= 10:
+                stop_event.set()
+                time.sleep(0.1)
+                stop()
+                print("Stopping the robot due to no confirmed gesture for 10 frames")
+                no_gesture_counter = 0
 
-    if not webcam_running:
-        stop_event.set()
-        stop()
-        print("Stopping the robot due to webcam not running")
+        if not webcam_running:
+            stop_event.set()
+            stop()
+            print("Stopping the robot due to webcam not running")
+
 
 
 #==========================================================================================================================================
 #APP
 
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.3, min_tracking_confidence=0.3)
+frame_lock = threading.Lock()
 
 def Capture_Video():
     global webcam_running, frame_label, picam2
+    mp_hands = mp.solutions.hands
+    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.3, min_tracking_confidence=0.3)
     frame_counter = 0
     pixel_size = 0.03
     scaling = pixel_size ** 2
@@ -619,7 +623,7 @@ def Capture_Video():
     try:
         while webcam_running:
             image = picam2.capture_array()
-            #time.sleep(0.03)
+            time.sleep(0.03)
             frame_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             results = hands.process(frame_rgb)
             gesture_detected = False
@@ -641,7 +645,7 @@ def Capture_Video():
                         Znak_R: "R Sign",
                         Znak_B: "B Sign"
                     }
-                    #time.sleep(0.03)
+                    time.sleep(0.03)
                     for gesture_func, gesture_label in gesture_functions.items():
                         if gesture_func(hand_landmarks, hand_label):
                             confirmed_gesture = Gesture_Confirmation(gesture_label)
@@ -657,14 +661,15 @@ def Capture_Video():
             cv2image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
-        
-            frame_label.imgtk = imgtk
-            frame_label.configure(image=imgtk)
-            frame_label.image = imgtk
+            with frame_lock:
+                frame_label.imgtk = imgtk
+                frame_label.configure(image=imgtk)
+                frame_label.image = imgtk
             time.sleep(0.03)
     finally:
         hands.close()
         picam2.stop()
+        picam2.close()
         cv2.destroyAllWindows()
 
 
@@ -714,7 +719,9 @@ def quit_app():
     if hands and getattr(hands, '_graph', None) is not None:
         hands.close()
         hands = None
+    stop()
     GPIO.cleanup()
+    root.quit()
     root.destroy()
 
     
